@@ -1,0 +1,164 @@
+{
+  "login-view": {
+    "title": "Bienvenido a Sweet Manager",
+    "login": "Iniciar Sesion",
+    "signup": "Registrarse empresa",
+    "sub": {
+      "text": "Por favor inicia sesión o",
+      "link": "crea una cuenta"
+    },
+    "login-panel": {
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "remember": "Recuerdame",
+      "login": "Iniciar Sesion",
+      "forgot": "Olvidaste tu contraseña?"
+    },
+    "signup-panel": {
+      "company-name": "Razón social de la empresa",
+      "name-lastname": "Nombre y apellidos del registrante",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "signup": "Registar Empresa",
+      "terms": {
+        "text": "Al registrarte, aceptas los",
+        "link": "Términos y Condiciones y Política de Privacidad"
+      }
+    }
+  },
+  "control-panel": "Panel de Control",
+  "profile": {
+    "view": {
+      "title": "Mi Perfil",
+      "name": "Nombre",
+      "change-name": "Cambiar nombre",
+      "email": "Correo electrónico",
+      "change-email": "Cambiar correo electrónico",
+      "company": "Empresa",
+      "see-company": "Ver empresa",
+      "company-position": "Rol dentro de la empresa",
+      "change-company-position": "Cambiar rol",
+      "password": "Contraseña",
+      "change-password": "Cambiar contraseña",
+      "account": "Cuenta",
+      "delete-account": "Eliminar cuenta",
+      "notifications": "Notificaciones"
+    },
+    "employee": {
+      "delete-from-company": "Delete from company"
+    }
+  },
+  "company": {
+    "view": {
+      "title": "Mi Empresa",
+      "info": "Información",
+      "business-name": "Razón social",
+      "change-business-name": "Cambiar razón social",
+      "change-ruc": "Cambiar RUC",
+      "company": "Empresa",
+      "delete-company": "Eliminar empresa"
+    },
+    "employees": {
+      "title": "Trabajadores",
+      "search-employee": "Buscar trabajadores",
+      "invite-employee": "Invitar trabajadores",
+      "see-more": "Ver mas"
+    }
+  },
+  "charts": {
+    "header": "Panel de control",
+    "title": "Reportes Estadísticos",
+    "room": {
+      "type": "Ocupación por tipo de habitación",
+      "title": "Grafico de ocupación por tipo de habitación",
+      "types": {
+        "1": "Económica",
+        "2": "Estándar",
+        "3": "Deluxe",
+        "4": "Suite"
+      }
+    },
+    "months": {
+      "1": "Enero",
+      "2": "Febrero",
+      "3": "Marzo",
+      "4": "Abril",
+      "5": "Mayo",
+      "6": "Junio",
+      "7": "Julio",
+      "8": "Agosto",
+      "9": "Septiembre",
+      "10": "Octubre",
+      "11": "Noviembre",
+      "12": "Diciembre"
+    },
+    "monthly": {
+      "title": "Grafico de ingresos mensuales",
+      "type": "Ingresos mensuales"
+    },
+    "monthly-income-expense": {
+      "title": "Grafico de ingresos y gastos mensuales",
+      "type": {
+        "income": "Ingresos",
+        "expense": "Gastos"
+      }
+    }
+  },
+  "rooms-monitoring": {
+    "view": {
+      "id": "id",
+      "name": "nombre",
+      "description": "descripcion",
+      "worker": "trabajador",
+      "client": "cliente",
+      "totalbeds": "TotalCamas",
+      "totalbathrooms": "TotalBaños",
+      "totaltelevision": "TotalTelevisores",
+      "status": "stado",
+      "title": "Gestion de habitaciones"
+    }
+  },
+  "interaction": {
+    "notifications": {
+      "title": "Notificaciones",
+      "headers": {
+        "id": "Código",
+        "title": "Título",
+        "message": "Mensaje",
+        "date": "Fecha"
+      }
+    },
+    "notifSupply": {
+      "success": "¡Exito!",
+      "created": "Inventario creado",
+      "updated": "Inventario actualizado",
+      "deleted": "Inventario eliminado",
+      "warning": "¡Advertencia!",
+      "fields-required": "Se requieren todos los campos"
+    }
+  },
+  "actions": {
+    "edit": "Editar",
+    "new": "Añadir",
+    "update": "Actualizar",
+    "create": "Crear",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "confirm-delete": "¿Estás seguro de que deseas eliminar este elemento?",
+    "confirmation": "¿Confirmar accion?"
+  },
+  "manage-supplies": "Control de Inventarios",
+  "supply": {
+    "title": "Inventario",
+    "title-plural": "Inventarios",
+    "product": "Producto",
+    "product-required": "Un producto es requerido",
+    "quantity": "Cantidad",
+    "quantity-required": "Una cantidad es requerida",
+    "address": "Dirección",
+    "address-required": "Una direccion es requerida",
+    "expire": "Fecha de vencimiento",
+    "expire-required": "Una fecha de vencimiento es requerida",
+    "search": "Buscar..."
+  }
+}
