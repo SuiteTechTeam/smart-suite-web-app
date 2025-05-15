@@ -4,6 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Colores anidados (estructura original)
         primary: {
           green: '#437F54',
           white: '#E1E8EC',
@@ -29,4 +30,4 @@ export default {
     },
   },
   plugins: [],
-} 
+}
