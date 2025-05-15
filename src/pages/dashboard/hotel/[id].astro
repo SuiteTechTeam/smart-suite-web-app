@@ -1,8 +1,8 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 
-// Get the hotel ID from the URL
-const { id } = Astro.params;
+
+const id = Astro.params.id;
 const isNewHotel = id === 'new';
 
 // In a real application, you would check authentication
