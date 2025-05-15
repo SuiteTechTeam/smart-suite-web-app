@@ -1,27 +1,14 @@
 {
-  "name": "sweetmanager-frontend",
-  "private": true,
-  "version": "0.0.0",
+  "name": "",
   "type": "module",
+  "version": "0.0.1",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
   },
   "dependencies": {
-    "@syncfusion/ej2-vue-navigations": "^25.2.6",
-    "axios": "^1.9.0",
-    "chart.js": "^4.4.9",
-    "primeflex": "^3.3.1",
-    "primeicons": "^7.0.0",
-    "primevue": "^3.53.1",
-    "vue": "^3.5.13",
-    "vue-country-flag-next": "^2.3.2",
-    "vue-i18n": "^9.14.4",
-    "vue-router": "^4.5.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.4",
-    "vite": "^5.4.19"
+    "astro": "^5.7.13"
   }
 }
