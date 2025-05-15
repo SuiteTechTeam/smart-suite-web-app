@@ -7,7 +7,7 @@ import MainLayout from "@/layouts/MainLayout.astro";
     <div class="max-w-xl w-full bg-white rounded-lg shadow-md p-8">
       <div class="flex flex-col items-center mb-8">
         <!-- Logo -->
-        <div class="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center mb-4">
+        <div class="w-16 h-16 rounded-full bg-primary-green flex items-center justify-center mb-4">
           <span class="text-white text-2xl font-bold">ST</span>
         </div>
         <h1 class="text-3xl font-bold text-gray-900 mb-2">Last one thing...</h1>
@@ -22,9 +22,9 @@ import MainLayout from "@/layouts/MainLayout.astro";
         <!-- Opciones de rol -->
         <div class="space-y-4">
           <!-- Guest -->
-<!--           <div class="relative flex items-start p-4 border border-gray-200 rounded-lg hover:border-blue-500 cursor-pointer" id="guestOption">
+<!--           <div class="relative flex items-start p-4 border border-gray-200 rounded-lg hover:border-primary-green cursor-pointer" id="guestOption">
             <div class="flex items-center h-5">
-              <input id="guest" name="accountType" type="radio" value="guest" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+              <input id="guest" name="accountType" type="radio" value="guest" class="h-5 w-5 text-primary-green border-gray-300 focus:ring-primary-green">
             </div>
             <div class="ml-3">
               <label for="guest" class="font-medium text-gray-900 block">Guest</label>
@@ -33,9 +33,9 @@ import MainLayout from "@/layouts/MainLayout.astro";
           </div> -->
           
           <!-- Admin -->
-          <div class="relative flex items-start p-4 border border-gray-200 rounded-lg hover:border-blue-500 cursor-pointer" id="adminOption">
+          <div class="relative flex items-start p-4 border border-gray-200 rounded-lg hover:border-primary-green cursor-pointer" id="adminOption">
             <div class="flex items-center h-5">
-              <input id="admin" name="accountType" type="radio" value="admin" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+              <input id="admin" name="accountType" type="radio" value="admin" class="h-5 w-5 text-primary-green border-gray-300 focus:ring-primary-green">
             </div>
             <div class="ml-3">
               <label for="admin" class="font-medium text-gray-900 block">Admin</label>
@@ -44,9 +44,9 @@ import MainLayout from "@/layouts/MainLayout.astro";
           </div>
           
           <!-- Owner -->
-          <div class="relative flex items-start p-4 border border-gray-200 rounded-lg hover:border-blue-500 cursor-pointer" id="ownerOption">
+          <div class="relative flex items-start p-4 border border-gray-200 rounded-lg hover:border-primary-green cursor-pointer" id="ownerOption">
             <div class="flex items-center h-5">
-              <input id="owner" name="accountType" type="radio" value="owner" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+              <input id="owner" name="accountType" type="radio" value="owner" class="h-5 w-5 text-primary-green border-gray-300 focus:ring-primary-green">
             </div>
             <div class="ml-3">
               <label for="owner" class="font-medium text-gray-900 block">Owner</label>
@@ -55,10 +55,10 @@ import MainLayout from "@/layouts/MainLayout.astro";
           </div>
         </div>
 
-        <div id="errorMessage" class="hidden text-red-600 text-sm text-center"></div>
+        <div id="errorMessage" class="hidden text-secondary-brown text-sm text-center"></div>
         
         <div>
-          <button type="submit" id="submitButton" class="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+          <button type="submit" id="submitButton" class="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-green hover:bg-primary-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-green">
             <span id="buttonText">Register</span>
             <span id="loadingSpinner" class="hidden ml-2">
               <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -71,7 +71,7 @@ import MainLayout from "@/layouts/MainLayout.astro";
       </form>
       
       <div class="mt-6 text-center">
-        <p class="text-sm text-gray-600">Already have an account? <a href="/sign-in" class="text-blue-600 hover:text-blue-800 font-medium">Log In</a></p>
+        <p class="text-sm text-gray-600">Already have an account? <a href="/sign-in" class="text-primary-green hover:text-primary-green font-medium">Log In</a></p>
       </div>
     </div>
   </div>
@@ -89,12 +89,12 @@ import MainLayout from "@/layouts/MainLayout.astro";
         
         // Actualizar estilos visuales
         roleOptions.forEach(opt => {
-          opt.classList.remove('border-blue-500', 'bg-blue-50');
+          opt.classList.remove('border-primary-green', 'bg-secondary-green2 bg-opacity-10');
           opt.classList.add('border-gray-200');
         });
         
         this.classList.remove('border-gray-200');
-        this.classList.add('border-blue-500', 'bg-blue-50');
+        this.classList.add('border-primary-green', 'bg-secondary-green2 bg-opacity-10');
       }
     });
   });

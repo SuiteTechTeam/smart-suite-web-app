@@ -1,14 +1,222 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 
+// In a real application, you would check authentication
+// This is a placeholder for demonstration
+const isAuthenticated = false;
+const userRole = "";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+if (isAuthenticated) {
+  // Redirect based on role
+  if (userRole === "owner") {
+    return Astro.redirect("/dashboard");
+  }
+  // Add other role redirects as needed
+}
 ---
 
-<MainLayout>
+<MainLayout title="Smart Suite - Hotel Management System">
+  <div class="min-h-screen flex flex-col">
+    <!-- Header Section -->
+    <header class="py-4 border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+        <div class="flex items-center">
+          <img src="/smart-suite-logo.png" alt="Smart Suite Logo" class="h-10" />
+          <span class="ml-2 text-primary-green font-bold text-2xl">Sweet Manager</span>
+        </div>
+        <div class="flex items-center">
+          <a href="/sign-in" class="px-4 py-2 mr-2 text-primary-green hover:text-primary-green font-medium">Login</a>
+          <a href="/sign-up" class="px-4 py-2 bg-secondary-brown text-white rounded-md hover:bg-secondary-beige hover:text-black transition-colors mr-4">Register</a>
+          <button class="px-3 py-1 font-medium mr-4">En</button>
+          <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </header>
 
-	<h1>
-		test
-	</h1>
+    <!-- Search Section -->
+    <div class="py-8 border-b">
+      <div class="max-w-2xl mx-auto px-4">
+        <div class="relative">
+          <input 
+            type="text" 
+            placeholder="¿What will be your next destiny?" 
+            class="w-full py-4 px-6 rounded-full border shadow-md text-lg focus:outline-none focus:ring-2 focus:ring-primary-green"
+          />
+          <button class="absolute right-2 top-1/2 -translate-y-1/2 bg-primary-green text-white p-3 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Categories Section -->
+    <div class="py-4 border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex overflow-x-auto gap-8 pb-2">
+          <a href="#featured" class="flex flex-col items-center min-w-[80px] group">
+            <div class="p-3 bg-gray-100 rounded-full group-hover:bg-secondary-green2 bg-opacity-20 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 group-hover:text-primary-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <span class="text-sm text-gray-700 whitespace-nowrap">Featured</span>
+            <div class="h-1 w-full bg-primary-green rounded-full mt-2"></div>
+          </a>
+          
+          <a href="#lake" class="flex flex-col items-center min-w-[80px] group">
+            <div class="p-3 bg-gray-100 rounded-full group-hover:bg-secondary-green2 bg-opacity-20 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 group-hover:text-primary-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <span class="text-sm text-gray-700 whitespace-nowrap">Near the Lake</span>
+          </a>
+          
+          <a href="#pool" class="flex flex-col items-center min-w-[80px] group">
+            <div class="p-3 bg-gray-100 rounded-full group-hover:bg-secondary-green2 bg-opacity-20 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 group-hover:text-primary-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <span class="text-sm text-gray-700 whitespace-nowrap">With Pool</span>
+          </a>
+          
+          <a href="#beach" class="flex flex-col items-center min-w-[80px] group">
+            <div class="p-3 bg-gray-100 rounded-full group-hover:bg-secondary-green2 bg-opacity-20 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 group-hover:text-primary-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <span class="text-sm text-gray-700 whitespace-nowrap">Near the Beach</span>
+          </a>
+          
+          <a href="#rural" class="flex flex-col items-center min-w-[80px] group">
+            <div class="p-3 bg-gray-100 rounded-full group-hover:bg-secondary-green2 bg-opacity-20 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 group-hover:text-primary-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <span class="text-sm text-gray-700 whitespace-nowrap">Rural Hotel</span>
+          </a>
+          
+          <a href="#bedroom" class="flex flex-col items-center min-w-[80px] group">
+            <div class="p-3 bg-gray-100 rounded-full group-hover:bg-secondary-green2 bg-opacity-20 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 group-hover:text-primary-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <span class="text-sm text-gray-700 whitespace-nowrap">Master Bedroom</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hotel Listings -->
+    <div class="py-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- Hotel Card 1 -->
+          <div class="rounded-lg overflow-hidden shadow-md">
+            <div class="relative">
+              <img src="/hotel1-beach.jpg" alt="Hotel Beach View" class="w-full h-48 object-cover" />
+              <div class="absolute bottom-2 left-2 bg-white rounded-full p-1">
+                <div class="bg-primary-green rounded-full w-10 h-10 flex items-center justify-center">
+                  <span class="text-white text-xs font-bold">Logo</span>
+                </div>
+              </div>
+            </div>
+            <div class="p-4">
+              <h3 class="font-medium text-gray-900">Punta Sal, Tumbes - Perú</h3>
+              <p class="text-gray-600 text-sm">Royal Decameron Punta Sal</p>
+              <p class="mt-4 font-bold">s/ 320 per night</p>
+            </div>
+          </div>
+          
+          <!-- Hotel Card 2 -->
+          <div class="rounded-lg overflow-hidden shadow-md">
+            <div class="relative">
+              <img src="/hotel1-room.jpg" alt="Hotel Room" class="w-full h-48 object-cover" />
+              <div class="absolute bottom-2 left-2 bg-white rounded-full p-1">
+                <div class="bg-primary-green rounded-full w-10 h-10 flex items-center justify-center">
+                  <span class="text-white text-xs font-bold">Logo</span>
+                </div>
+              </div>
+            </div>
+            <div class="p-4">
+              <h3 class="font-medium text-gray-900">Miraflores, Lima - Perú</h3>
+              <p class="text-gray-600 text-sm">Hilton Hotel</p>
+              <p class="mt-4 font-bold">s/ 391 per night</p>
+            </div>
+          </div>
+          
+          <!-- Hotel Card 3 -->
+          <div class="rounded-lg overflow-hidden shadow-md">
+            <div class="relative">
+              <img src="/hotel1-aerial.jpg" alt="Hotel Aerial View" class="w-full h-48 object-cover" />
+              <div class="absolute bottom-2 left-2 bg-white rounded-full p-1">
+                <div class="bg-primary-green rounded-full w-10 h-10 flex items-center justify-center">
+                  <span class="text-white text-xs font-bold">Logo</span>
+                </div>
+              </div>
+            </div>
+            <div class="p-4">
+              <h3 class="font-medium text-gray-900">San Isidro, Lima - Perú</h3>
+              <p class="text-gray-600 text-sm">San Isidro Inn</p>
+              <p class="mt-4 font-bold">s/ 87.16 per night</p>
+            </div>
+          </div>
+          
+          <!-- Hotel Card 4 -->
+          <div class="rounded-lg overflow-hidden shadow-md">
+            <div class="relative">
+              <img src="/background-image.jpg" alt="Hotel View" class="w-full h-48 object-cover" />
+              <div class="absolute bottom-2 left-2 bg-white rounded-full p-1">
+                <div class="bg-primary-green rounded-full w-10 h-10 flex items-center justify-center">
+                  <span class="text-white text-xs font-bold">Logo</span>
+                </div>
+              </div>
+            </div>
+            <div class="p-4">
+              <h3 class="font-medium text-gray-900">Miraflores, Lima - Perú</h3>
+              <p class="text-gray-600 text-sm">Jose Antonio Hotel</p>
+              <p class="mt-4 font-bold">s/ 268 per night</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- No Results Section (Hidden by default) -->
+    <div class="py-8 hidden">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col items-center justify-center py-16">
+          <div class="bg-gray-100 rounded-full p-12 mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h2 class="text-xl font-medium text-gray-900 mb-2">Ups...</h2>
+          <p class="text-gray-500 text-center max-w-md">
+            We couldn't find any hotel in this section. We invite you to search for another categories
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Might Interest You Section -->
+    <div class="py-8 border-t">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Might interest you...</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- Same hotel cards as above can be repeated here -->
+        </div>
+      </div>
+    </div>
+  </div>
 </MainLayout>

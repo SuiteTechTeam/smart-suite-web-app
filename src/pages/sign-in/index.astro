@@ -17,7 +17,7 @@ const user = Astro.locals.user;
       <div class="max-w-md w-full space-y-8">
         <!-- Logo -->
         <div class="flex flex-col items-center">
-          <div class="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center">
+          <div class="w-16 h-16 rounded-full bg-primary-green flex items-center justify-center">
               <img src="/smart-suite-logo.png" alt="Logo" class="h-14 w-14 border-2 border-white rounded-full">
           </div>
           <h1 class="mt-6 text-center text-3xl font-bold text-gray-900">Welcome!</h1>
@@ -30,14 +30,14 @@ const user = Astro.locals.user;
             <div>
               <label for="email" class="sr-only">Username</label>
               <input id="email" name="email" type="email" required
-                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-green focus:border-primary-green sm:text-sm"
                 placeholder="Username">
             </div>
             
             <div class="relative">
               <label for="password" class="sr-only">Password</label>
               <input id="password" name="password" type="password" required
-                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-green focus:border-primary-green sm:text-sm"
                 placeholder="Password">
               <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center">
                 <Eye class="h-5 w-5 text-gray-400" />
@@ -48,25 +48,25 @@ const user = Astro.locals.user;
             <div>
               <label for="role" class="sr-only">Role</label>
               <select id="role" name="role" required
-                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-green focus:border-primary-green sm:text-sm">
                 <option value="">Select a role</option>
-                <option value="1">ROLE_OWNER</option>
-                <option value="2">ROLE_ADMIN</option>
-                <option value="3">ROLE_WORKER</option>
+                <option value="1">Owner</option>
+                <option value="2">Admin</option>
+                <option value="3">Worker</option>
               </select>
             </div>
           </div>
 
           <div class="flex items-center justify-end">
-            <a href="#" class="text-sm text-blue-600 hover:text-blue-800">Forgot Password</a>
+            <a href="#" class="text-sm text-primary-green hover:text-primary-green">Forgot Password</a>
           </div>
 
-          <div id="errorMessage" class="hidden text-red-600 text-sm text-center"></div>
+          <div id="errorMessage" class="hidden text-secondary-brown text-sm text-center"></div>
 
           <div>
             <button type="submit" id="submitButton"
-              class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              <span id="buttonText">Enter</span>
+              class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-green hover:bg-secondary-beige hover:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-green">
+              <span id="buttonText">Login</span>
               <span id="loadingSpinner" class="hidden">
                 <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -98,7 +98,7 @@ const user = Astro.locals.user;
 
         <!-- Enlace para crear cuenta -->
         <div class="mt-6 text-center">
-          <p class="text-sm text-gray-600">Don't have an account yet? <a href="#" class="text-blue-600 hover:text-blue-800 font-medium">Create Account</a></p>
+          <p class="text-sm text-gray-600">Don't have an account yet? <a href="/sign-up" class="text-primary-green hover:text-primary-green font-medium">Create Account</a></p>
         </div>
       </div>
     </div>
