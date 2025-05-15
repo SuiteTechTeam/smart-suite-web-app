@@ -1,0 +1,185 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+---
+
+<MainLayout title="Account Type - SweetManager">
+  <div class="min-h-screen flex justify-center items-center bg-gray-50 p-4">
+    <div class="max-w-xl w-full bg-white rounded-lg shadow-md p-8">
+      <div class="flex flex-col items-center mb-8">
+        <!-- Logo -->
+        <div class="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center mb-4">
+          <span class="text-white text-2xl font-bold">ST</span>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Last one thing...</h1>
+        <p class="text-center text-gray-600 max-w-md">
+          At SweetManager we care about providing the best possible experience.
+        </p>
+      </div>
+
+      <h2 class="text-xl font-medium text-gray-800 mb-6">Who will be this account for?</h2>
+      
+      <form id="roleForm" class="space-y-6">
+        <!-- Opciones de rol -->
+        <div class="space-y-4">
+          <!-- Guest -->
+<!--           <div class="relative flex items-start p-4 border border-gray-200 rounded-lg hover:border-blue-500 cursor-pointer" id="guestOption">
+            <div class="flex items-center h-5">
+              <input id="guest" name="accountType" type="radio" value="guest" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+            </div>
+            <div class="ml-3">
+              <label for="guest" class="font-medium text-gray-900 block">Guest</label>
+              <p class="text-gray-500 text-sm">I will use my account to search and book a hotel stay.</p>
+            </div>
+          </div> -->
+          
+          <!-- Admin -->
+          <div class="relative flex items-start p-4 border border-gray-200 rounded-lg hover:border-blue-500 cursor-pointer" id="adminOption">
+            <div class="flex items-center h-5">
+              <input id="admin" name="accountType" type="radio" value="admin" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+            </div>
+            <div class="ml-3">
+              <label for="admin" class="font-medium text-gray-900 block">Admin</label>
+              <p class="text-gray-500 text-sm">I will be responsible for managing and handling each stay within a hotel to provide the greatest possible comfort.</p>
+            </div>
+          </div>
+          
+          <!-- Owner -->
+          <div class="relative flex items-start p-4 border border-gray-200 rounded-lg hover:border-blue-500 cursor-pointer" id="ownerOption">
+            <div class="flex items-center h-5">
+              <input id="owner" name="accountType" type="radio" value="owner" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+            </div>
+            <div class="ml-3">
+              <label for="owner" class="font-medium text-gray-900 block">Owner</label>
+              <p class="text-gray-500 text-sm">I will be on top of all the amenities within my hotel and will manage what is necessary for my guests.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="errorMessage" class="hidden text-red-600 text-sm text-center"></div>
+        
+        <div>
+          <button type="submit" id="submitButton" class="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <span id="buttonText">Register</span>
+            <span id="loadingSpinner" class="hidden ml-2">
+              <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
+      </form>
+      
+      <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600">Already have an account? <a href="/sign-in" class="text-blue-600 hover:text-blue-800 font-medium">Log In</a></p>
+      </div>
+    </div>
+  </div>
+</MainLayout>
+
+<script>
+  // Función para el manejo de los contenedores clickeables
+  const roleOptions = document.querySelectorAll('[id$="Option"]');
+  roleOptions.forEach(option => {
+    option.addEventListener('click', function(this: HTMLElement) {
+      // Obtener el radio button dentro de este contenedor
+      const radioInput = this.querySelector('input[type="radio"]') as HTMLInputElement;
+      if (radioInput) {
+        radioInput.checked = true;
+        
+        // Actualizar estilos visuales
+        roleOptions.forEach(opt => {
+          opt.classList.remove('border-blue-500', 'bg-blue-50');
+          opt.classList.add('border-gray-200');
+        });
+        
+        this.classList.remove('border-gray-200');
+        this.classList.add('border-blue-500', 'bg-blue-50');
+      }
+    });
+  });
+
+  // Manejo del formulario
+  const form = document.getElementById('roleForm') as HTMLFormElement;
+  const submitButton = document.getElementById('submitButton') as HTMLButtonElement;
+  const buttonText = document.getElementById('buttonText') as HTMLSpanElement;
+  const loadingSpinner = document.getElementById('loadingSpinner') as HTMLSpanElement;
+  const errorMessage = document.getElementById('errorMessage') as HTMLDivElement;
+
+  if (form && submitButton && buttonText && loadingSpinner && errorMessage) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Validar selección
+      const selectedRole = document.querySelector('input[name="accountType"]:checked') as HTMLInputElement;
+      if (!selectedRole) {
+        errorMessage.textContent = 'Please select an account type';
+        errorMessage.classList.remove('hidden');
+        return;
+      }
+
+      // Mostrar estado de carga
+      submitButton.disabled = true;
+      buttonText.classList.add('hidden');
+      loadingSpinner.classList.remove('hidden');
+      errorMessage.classList.add('hidden');
+
+      try {
+        // Obtener datos previos del formulario
+        const signupData = JSON.parse(sessionStorage.getItem('signupData') || '{}');
+        
+        // Asignar el rol seleccionado
+        const roleValue = selectedRole.value;
+        let rolesId;
+        
+        switch(roleValue) {
+          case 'owner':
+            rolesId = 1; // ROLE_OWNER
+            break;
+          case 'admin':
+            rolesId = 2; // ROLE_ADMIN
+            break;
+          case 'guest':
+            rolesId = 3; // ROLE_WORKER (o ROLE_GUEST)
+            break;
+          default:
+            rolesId = 3;
+        }
+        
+        // Combinar los datos y simular el registro
+        const registrationData = {
+          ...signupData,
+          rolesId
+        };
+        
+        // Aquí se podría hacer la llamada al API para registrar
+        console.log('Registration data:', registrationData);
+        
+        // Simular delay para demostración
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Redirigir a la página de inicio de sesión o dashboard
+        sessionStorage.removeItem('signupData'); // Limpiar datos temporales
+        window.location.href = '/sign-in'; // Redirigir al login
+      } catch (error) {
+        console.error('Registration error:', error);
+        errorMessage.textContent = 'Registration failed. Please try again.';
+        errorMessage.classList.remove('hidden');
+        
+        // Restaurar estado del botón
+        submitButton.disabled = false;
+        buttonText.classList.remove('hidden');
+        loadingSpinner.classList.add('hidden');
+      }
+    });
+  }
+
+  // Verificar que hayan datos previos
+  document.addEventListener('DOMContentLoaded', () => {
+    const signupData = sessionStorage.getItem('signupData');
+    if (!signupData) {
+      // Si no hay datos previos, redirigir al primer paso
+      window.location.href = '/sign-up';
+    }
+  });
+</script> 

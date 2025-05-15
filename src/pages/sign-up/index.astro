@@ -1,0 +1,212 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { Eye, EyeOff, Github, Facebook, Linkedin } from "@lucide/astro";
+
+if (Astro.locals.isAuthenticated) {
+  return Astro.redirect('/');
+}
+---
+
+<MainLayout title="Create Account">
+  <div class="min-h-screen flex">
+    <!-- Lado izquierdo - Formulario -->
+    <div class="w-full lg:w-1/2 flex items-center justify-center bg-white p-8">
+      <div class="max-w-md w-full space-y-8">
+        <!-- Logo -->
+        <div class="flex flex-col items-center">
+          <div class="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center">
+            <span class="text-white text-2xl font-bold">ST</span>
+          </div>
+          <h1 class="mt-6 text-center text-3xl font-bold text-gray-900">Create an Account</h1>
+          <p class="mt-2 text-center text-gray-600">Join the innovative change</p>
+        </div>
+        
+        <!-- Formulario -->
+        <form class="mt-8 space-y-6" id="signupForm">
+          <div class="space-y-4">
+            <div>
+              <label for="fullName" class="text-sm text-gray-700 block mb-1">Full Name</label>
+              <input id="fullName" name="fullName" type="text" required
+                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Enter your full name">
+            </div>
+            
+            <div>
+              <label for="email" class="text-sm text-gray-700 block mb-1">Email</label>
+              <input id="email" name="email" type="email" required
+                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Enter your email">
+            </div>
+            
+            <div>
+              <label for="phone" class="text-sm text-gray-700 block mb-1">Phone</label>
+              <div class="flex">
+                <div class="w-16 inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                  <img src="https://flagcdn.com/w20/pe.png" alt="Peru" class="h-4 w-6">
+                </div>
+                <input id="phone" name="phone" type="tel" 
+                  class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-r-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="999 888 547">
+              </div>
+            </div>
+            
+            <div class="relative">
+              <label for="password" class="text-sm text-gray-700 block mb-1">Password</label>
+              <input id="password" name="password" type="password" required
+                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Enter your password">
+            </div>
+            
+            <div class="relative">
+              <label for="confirmPassword" class="text-sm text-gray-700 block mb-1">Confirm Password</label>
+              <input id="confirmPassword" name="confirmPassword" type="password" required
+                class="appearance-none relative block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Confirm your password">
+              <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center" style="top: 24px;">
+                <Eye class="h-5 w-5 text-gray-400" />
+                <EyeOff class="h-5 w-5 text-gray-400 hidden" />
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center">
+            <input id="terms" name="terms" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+            <label for="terms" class="ml-2 block text-sm text-gray-700">
+              I accept the <a href="#" class="text-blue-600 hover:text-blue-800">Terms of Service</a> and <a href="#" class="text-blue-600 hover:text-blue-800">Privacy Policy</a>
+            </label>
+          </div>
+
+          <div id="errorMessage" class="hidden text-red-600 text-sm text-center"></div>
+
+          <div>
+            <button type="submit" id="submitButton"
+              class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              <span id="buttonText">Register</span>
+              <span id="loadingSpinner" class="hidden">
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Separador -->
+        <div class="mt-6">
+          <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-300"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-white text-gray-500">or continue with</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones sociales -->
+        <div class="mt-6 grid grid-cols-3 gap-3">
+          <button type="button" class="flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50">
+            <Github class="h-5 w-5 text-gray-700" />
+          </button>
+          <button type="button" class="flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50">
+            <Facebook class="h-5 w-5 text-blue-600" />
+          </button>
+          <button type="button" class="flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50">
+            <Linkedin class="h-5 w-5 text-blue-700" />
+          </button>
+        </div>
+
+        <!-- Enlace para iniciar sesión -->
+        <div class="mt-6 text-center">
+          <p class="text-sm text-gray-600">Already have an account? <a href="/sign-in" class="text-blue-600 hover:text-blue-800 font-medium">Log In</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lado derecho - Imagen de fondo -->
+    <div class="hidden lg:block w-1/2 bg-cover bg-center" style="background-image: url('/background-image.jpg');">
+      <!-- Aquí puedes agregar un elemento o dejar solo el fondo -->
+    </div>
+  </div>
+</MainLayout>
+
+<script>
+  // Toggle password visibility
+  const togglePassword = document.getElementById('togglePassword');
+  const passwordInput = document.getElementById('confirmPassword') as HTMLInputElement;
+  const eyeIcon = togglePassword?.querySelector('svg:first-child');
+  const eyeOffIcon = togglePassword?.querySelector('svg:last-child');
+  
+  togglePassword?.addEventListener('click', () => {
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      eyeIcon?.classList.add('hidden');
+      eyeOffIcon?.classList.remove('hidden');
+    } else {
+      passwordInput.type = 'password';
+      eyeIcon?.classList.remove('hidden');
+      eyeOffIcon?.classList.add('hidden');
+    }
+  });
+
+  // Validación del formulario
+  const form = document.getElementById('signupForm') as HTMLFormElement;
+  const submitButton = document.getElementById('submitButton') as HTMLButtonElement;
+  const buttonText = document.getElementById('buttonText') as HTMLSpanElement;
+  const loadingSpinner = document.getElementById('loadingSpinner') as HTMLSpanElement;
+  const errorMessage = document.getElementById('errorMessage') as HTMLDivElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Validación básica
+    const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+    const confirmPassword = (form.elements.namedItem('confirmPassword') as HTMLInputElement).value;
+    const termsAccepted = (form.elements.namedItem('terms') as HTMLInputElement).checked;
+    
+    if (password !== confirmPassword) {
+      errorMessage.textContent = 'Passwords do not match';
+      errorMessage.classList.remove('hidden');
+      return;
+    }
+    
+    if (!termsAccepted) {
+      errorMessage.textContent = 'You must accept the Terms of Service and Privacy Policy';
+      errorMessage.classList.remove('hidden');
+      return;
+    }
+    
+    // Mostrar estado de carga
+    submitButton.disabled = true;
+    buttonText.classList.add('hidden');
+    loadingSpinner.classList.remove('hidden');
+    errorMessage.classList.add('hidden');
+
+    try {
+      // Obtener datos del formulario
+      const fullName = (form.elements.namedItem('fullName') as HTMLInputElement).value;
+      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      const phone = (form.elements.namedItem('phone') as HTMLInputElement).value;
+      
+      // Guardar datos en sessionStorage para usarlos en la siguiente pantalla
+      sessionStorage.setItem('signupData', JSON.stringify({
+        fullName,
+        email,
+        phone,
+        password
+      }));
+      
+      // Redirigir a la página de selección de rol
+      window.location.href = '/sign-up/role-selection';
+    } catch (error) {
+      errorMessage.textContent = 'Registration failed. Please try again.';
+      errorMessage.classList.remove('hidden');
+      
+      // Restaurar estado del botón
+      submitButton.disabled = false;
+      buttonText.classList.remove('hidden');
+      loadingSpinner.classList.add('hidden');
+    }
+  });
+</script> 
