@@ -1,0 +1,35 @@
+---
+/**
+ * RoleGuard component
+ * A utility component that conditionally renders its content based on user roles
+ * 
+ * Usage:
+ * <RoleGuard allowedRoles={[Roles.OWNER, Roles.ADMIN]}>
+ *   <button>This button is only visible to owners and admins</button>
+ * </RoleGuard>
+ */
+import { Roles } from '../config/routesConfig';
+
+interface Props {
+  allowedRoles: number[]; // Array of roles that can view this content
+  showAlternative?: boolean; // Whether to show alternative content when access is denied
+}
+
+const {
+  allowedRoles = [],
+  showAlternative = false
+} = Astro.props;
+
+// Get user role from Astro.locals (set by middleware)
+const isAuthenticated = Astro.locals.isAuthenticated || false;
+const userRole = Astro.locals.userRole || null;
+
+// Determine if content should be shown
+const showContent = isAuthenticated && (
+  allowedRoles.length === 0 || // No roles specified, show to all authenticated users
+  (userRole && allowedRoles.includes(userRole)) // User has required role
+);
+---
+
+{showContent && <slot />}
+{!showContent && showAlternative && <slot name="alternative" />}

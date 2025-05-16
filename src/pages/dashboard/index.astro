@@ -1,18 +1,7 @@
 ---
 import DashBoardLayout from "@/layouts/DashBoardLayout.astro";
-
-// In a real application, you would check authentication
-// This is a placeholder for demonstration
-const isAuthenticated = true;
-const userRole = "owner";
-
-if (!isAuthenticated) {
-  return Astro.redirect("/sign-in");
-}
-
-if (userRole !== "owner") {
-  return Astro.redirect("/");
-}
+import RouteGuard from "@/components/RouteGuard.astro";
+import { Roles } from "@/config/routesConfig";
 
 // Mock hotel data for demonstration
 const hotels = [
@@ -39,6 +28,7 @@ const hotels = [
 ---
 
 <DashBoardLayout title="Dashboard - Smart Suite">
+  <div class="flex flex-wrap items-center justify-between mb-6">
       {hotels.map((hotel) => (
         <div class="bg-white shadow rounded-lg overflow-hidden mb-8">
           <div class="p-6">
@@ -114,13 +104,14 @@ const hotels = [
 
       <!-- Add New Hotel Button -->
       <div class="mt-8 flex justify-center">
-        <a href="/dashboard/hotel/new" class="px-6 py-3 bg-primary-green text-white rounded-md hover:bg-primary-green flex items-center">
+        <a href="/dashboard/hotel/new" class="px-6 py-3 bg-primary-green text-black rounded-md hover:bg-primary-green flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
           </svg>
           Add New Hotel
         </a>
       </div>
+    </div>
 </DashBoardLayout>
 
 <script>

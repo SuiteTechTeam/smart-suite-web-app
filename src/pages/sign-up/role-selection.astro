@@ -144,25 +144,39 @@ import MainLayout from "@/layouts/MainLayout.astro";
           default:
             rolesId = 3;
         }
-        
-        // Combinar los datos y simular el registro
+          // Combinar los datos y enviar al endpoint de registro
         const registrationData = {
           ...signupData,
           rolesId
         };
         
-        // Aquí se podría hacer la llamada al API para registrar
-        console.log('Registration data:', registrationData);
+        // Crear FormData para enviar
+        const formData = new FormData();
+        formData.append('email', registrationData.email);
+        formData.append('password', registrationData.password);
+        formData.append('fullName', registrationData.fullName);
+        formData.append('phone', registrationData.phone || '');
+        formData.append('rolesId', registrationData.rolesId.toString());
         
-        // Simular delay para demostración
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Llamar al endpoint de registro
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          body: formData
+        });
         
-        // Redirigir a la página de inicio de sesión o dashboard
-        sessionStorage.removeItem('signupData'); // Limpiar datos temporales
-        window.location.href = '/sign-in'; // Redirigir al login
-      } catch (error) {
+        if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(errorData || 'Registration failed');
+        }
+        
+        // Limpiar datos temporales
+        sessionStorage.removeItem('signupData');
+        
+        // Verificar si se devolvió un redirect
+        const redirectUrl = response.redirected ? response.url : '/sign-in';
+        window.location.href = redirectUrl;      } catch (error) {
         console.error('Registration error:', error);
-        errorMessage.textContent = 'Registration failed. Please try again.';
+        errorMessage.textContent = error instanceof Error ? error.message : 'Registration failed. Please try again.';
         errorMessage.classList.remove('hidden');
         
         // Restaurar estado del botón

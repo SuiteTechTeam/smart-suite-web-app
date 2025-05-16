@@ -40,7 +40,14 @@ const {
     <meta name="twitter:description" content={description} />
     <meta name="twitter:site" content="@smartsuite" />
     <meta name="twitter:creator" content="@smartsuite" />
-	
+    
+    <!-- Store user role in session storage for client-side access -->
+    <script define:vars={{ userRole: Astro.locals.userRole }}>
+      // Store user role in sessionStorage for client-side access
+      if (typeof userRole === 'number') {
+        sessionStorage.setItem('userRole', userRole.toString());
+      }
+    </script>
   </head>
   <body>
     <div class="flex flex-col min-h-screen">

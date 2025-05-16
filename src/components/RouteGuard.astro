@@ -1,0 +1,35 @@
+---
+/**
+ * RouteGuard component for protecting routes based on authentication and role
+ * This component can be used at the top of Astro pages to enforce access control
+ */
+
+interface Props {
+  requiredRoles?: number[];   // Array of roles that can access this route
+  redirectTo?: string;        // Where to redirect if access is denied (defaults to /)
+}
+
+const { 
+  requiredRoles = [], 
+  redirectTo = '/' 
+} = Astro.props;
+
+// Get authentication status and user role from Astro.locals
+// These values are set by the middleware
+const isAuthenticated = Astro.locals.isAuthenticated;
+const userRole = Astro.locals.userRole;
+
+// If not authenticated, redirect to login
+if (!isAuthenticated) {
+  return Astro.redirect('/sign-in');
+}
+
+// If roles are specified and user's role isn't included, redirect
+if (requiredRoles.length > 0 && (!userRole || !requiredRoles.includes(userRole))) {
+  return Astro.redirect(redirectTo);
+}
+
+// User has access, render the slot content (page content)
+---
+
+<slot />

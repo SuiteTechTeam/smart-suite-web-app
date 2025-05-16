@@ -2,6 +2,8 @@
 
 interface ImportMetaEnv {
   API_URL: string;
+  readonly SUPABASE_URL: string
+  readonly SUPABASE_ANON_KEY: string
 }
 
 interface ImportMeta {
@@ -12,10 +14,8 @@ declare namespace App {
   interface Locals {
     token?: string;
     isAuthenticated: boolean;
-    user?: {
-      id: string;
-      username: string;
-      role: string;
-    };
+    userRole: number | null;
+    userId: number | null;
+    user: any | null;
   }
 }

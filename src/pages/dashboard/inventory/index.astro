@@ -1,8 +1,54 @@
 ---
 import DashBoardLayout from "@/layouts/DashBoardLayout.astro";
 
+
+const hotels = [
+    {
+        id: 1,
+        name: "Royal Decameron Punta Sal",
+        address: "Av. Panamericana N, Punta Sal 24560",
+        description: "This vibrant all-inclusive hotel is nestled among palm trees on Punta Sal Beach, 5 km from the town center and 89 km from Tumbes Airport. Simple rooms feature a terrace or balcony, flat-screen TV, and internet access (chargeable); some have a sitting area. Free amenities include water sports, evening entertainment, and beach equipment rentals, plus meals and drinks served at 3 restaurants and 5 bars. Other amenities include a lively nightclub, gardens, and a long beach with cabanas. There's also an outdoor pool, a whirlpool, and a gym.",
+        email: "bookings@decameron.com",
+        phone: "073 55 4877",
+        amenities: [
+            { name: "Paid Wi-Fi", icon: "wifi" },
+            { name: "Breakfast included", icon: "coffee" },
+            { name: "Free parking", icon: "car" },
+            { name: "Outdoor pool", icon: "water" }
+        ],
+        images: [
+            "/hotel1-aerial.jpg",
+            "/hotel1-room.jpg",
+            "/hotel1-beach.jpg"
+        ]
+    }
+];
 ---
 
 <DashBoardLayout title="Inventory - SmartSuite">
-<h1 class="text-3xl font-bold text-gray-900 mb-4">Inventory</h1>
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">View your Hotels</h1>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {hotels.map((hotel) => (
+            <div class="bg-white shadow rounded-lg overflow-hidden mb-8">
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">{hotel.name}</h2>
+                    <p class="text-gray-600 mb-6">{hotel.address}</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-medium text-gray-900">Discover how everyone see your hotel</h3>
+                                <a href={`/dashboard/hotel/${hotel.id}`} class="text-primary-green hover:text-secondary-green1">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        ))}
+    </div>
 </DashBoardLayout>
