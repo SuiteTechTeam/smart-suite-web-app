@@ -60,7 +60,7 @@ export interface User {
     };
   }[];
 }
-
+//no esta, no funcionara dx
 export interface Profile {
   username: string;
   first_name: string | null;
@@ -69,3 +69,15 @@ export interface Profile {
   address: string | null;
   district: number | null;
 }
+
+export interface SupabaseResponse<T> {
+  data: T[] | null;
+  error: Error | null;
+}
+
+// Interfaces para las acciones de servidor
+export interface ServerActionResult {
+  success: boolean;
+  message: string;
+  data?: any;
+} 
