@@ -1,6 +1,6 @@
 import { Inventory, ServerActionResult } from "@/types/interfaces";
+import { createClient } from "@/utils/supabase/client";
 
-import { createClient } from "@/utils/supabase/server";
 
 export const getInventoryItems = async (): Promise<ServerActionResult> => {
     try {

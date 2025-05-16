@@ -8,8 +8,9 @@ interface FilterBarProps {
   setSearchTerm: (term: string) => void;
   filterType: string;
   setFilterType: (type: string) => void;
-  filterStock: string;
-  setFilterStock: (stock: string) => void;
+    filterStock: string;
+    setFilterStock: (stock: string) => void;
+  // Make sure to handle "all" as the default value for all stock levels in your parent component logic.
   itemTypes: string[];
 }
 
@@ -50,13 +51,12 @@ export const FilterBar = ({
             </div>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos los tipos</SelectItem>
+            Todos los tipos
             {itemTypes.map(type => (
               <SelectItem key={type} value={type}>{type}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        
         <Select value={filterStock} onValueChange={setFilterStock}>
           <SelectTrigger className="w-full sm:w-40">
             <div className="flex items-center gap-2">
@@ -65,7 +65,7 @@ export const FilterBar = ({
             </div>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="low">Stock bajo (&lt;10)</SelectItem>
             <SelectItem value="normal">Stock normal (10-30)</SelectItem>
             <SelectItem value="high">Stock alto (&gt;30)</SelectItem>

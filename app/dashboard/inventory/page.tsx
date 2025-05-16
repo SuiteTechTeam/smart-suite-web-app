@@ -9,13 +9,11 @@ import { Loader2, PlusCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Componentes
 import { FilterBar } from "./components/FilterBar";
 import { InventoryTable } from "./components/InventoryTable";
 import { StatsPanel } from "./components/StatsPanel";
 import { ItemFormDialog } from "./dialogs/ItemFormDialog";
 
-// Toast provisional
 const toast = (props: { title?: string; description?: string; variant?: "default" | "destructive" }) => {
   console.log(`Toast: ${props.title} - ${props.description}`);
 };
@@ -37,7 +35,6 @@ export default function InventoryPage() {
   const [itemToEdit, setItemToEdit] = useState<Inventory & { customType?: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Cargar datos del inventario
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
