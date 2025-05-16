@@ -11,8 +11,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata = {
 	metadataBase: new URL(defaultUrl),
-	title: "A4 BookStore | Store",
-	description: "Tienda virtual de libros",
+	title: "Smart-suite-web",
+	description: "Managemenet hotels business",
 };
 
 const urbanist = Urbanist({
