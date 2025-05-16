@@ -53,8 +53,18 @@ export const updateSession = async (request: NextRequest) => {
 		// https://supabase.com/docs/guides/auth/server-side/nextjs
 		const user = await supabase.auth.getUser();
 
+		// Add an index signature to routesConfig.private type if not already present
+		// For example, in your routesConfig definition file, update the type as follows:
+		// export interface PrivateRoutesConfig {
+		//   [key: string]: { path: string; roles?: string[] };
+		// }
+		// Then use that type for routesConfig.private
+		
 		// Obtener todas las rutas privadas
-		const privateRoutes = Object.values(routesConfig.private).map(route => route.path);
+		const privateRoutes = Object.values(routesConfig.private).map(route => ({
+			...route,
+			roles: route.roles ? [...route.roles] : undefined
+		})).map(route => route.path);
 
 		// Verificar rutas privadas
 		if (privateRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
@@ -62,21 +72,23 @@ export const updateSession = async (request: NextRequest) => {
 				return NextResponse.redirect(new URL('/sign-in', request.url));
 			}
 
+
+			console.log('User:', user.data.user);
 			// Verificación de roles desde la base de datos
 			const { data: userRoles, error: rolesError } = await supabase
 				.from('users_roles')
 				.select(`
-					role:roles (
+					role:roles!users_roles_roles_id_fkey (
 						role
 					)
 				`)
 				.eq('user_id', user.data.user?.id) as { data: UserRole[] | null; error: PostgrestError | null };
-			
+
 			if (rolesError) {
 				console.error('Error fetching user roles:', rolesError);
 				return NextResponse.redirect(new URL('/', request.url));
 			}
-			console.log(userRoles);
+			console.log("Roles", userRoles);
 			// Extraer los roles del usuario
 			const userRoleDescriptions = userRoles?.map(ur => ur.role.role) || [];
 			

@@ -42,12 +42,12 @@ export default function RootLayout({
 							<p>
 								Powered by{" "}
 								<a
-									href="https://las4as.pe"
+									href="#"
 									target="_blank"
 									className="font-bold hover:underline"
 									rel="noreferrer"
 								>
-									A&S Soluciones
+									Smart Suite
 								</a>
 							</p>
 							<ThemeSwitcher />

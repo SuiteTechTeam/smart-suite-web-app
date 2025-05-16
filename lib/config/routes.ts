@@ -25,6 +25,10 @@ export const routesConfig = {
       path: '/dashboard',
       roles: ['admin', 'worker']
     },
+    dashboardiot: {
+      path: '/dashboard-iot',
+      roles: ['admin', 'worker']
+    },
     profile: {
       path: '/profile',
       roles: ['worker', 'admin']
