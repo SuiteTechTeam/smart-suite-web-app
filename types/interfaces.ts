@@ -41,3 +41,31 @@ export interface BookingInventory {
   inventory_id: number;
   quantity: number;
 }
+
+export interface UserRole {
+  role: {
+    role: string;
+  };
+}
+
+export interface User {
+  id: string;
+  username: string;
+  first_name: string | null;
+  last_name: string | null;
+  created_at: string;
+  users_roles: {
+    roles: {
+      role: string;
+    };
+  }[];
+}
+
+export interface Profile {
+  username: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone_number: string | null;
+  address: string | null;
+  district: number | null;
+}
