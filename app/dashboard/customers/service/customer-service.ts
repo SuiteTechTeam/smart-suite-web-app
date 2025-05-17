@@ -36,6 +36,7 @@ export const getCustomers = async (): Promise<ServiceResponse> => {
  */
 export const createCustomer = async (customer: Omit<Customer, 'id'>): Promise<ServiceResponse> => {
   try {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('customers')
       .insert(customer)
@@ -62,6 +63,7 @@ export const createCustomer = async (customer: Omit<Customer, 'id'>): Promise<Se
  */
 export const updateCustomer = async (id: number, customer: Partial<Customer>): Promise<ServiceResponse> => {
   try {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('customers')
       .update(customer)
@@ -89,6 +91,7 @@ export const updateCustomer = async (id: number, customer: Partial<Customer>): P
  */
 export const deleteCustomer = async (id: number): Promise<ServiceResponse> => {
   try {
+    const supabase = await createClient();
     const { error } = await supabase
       .from('customers')
       .delete()
