@@ -13,10 +13,7 @@ import { FilterBar } from "./components/FilterBar";
 import { InventoryTable } from "./components/InventoryTable";
 import { StatsPanel } from "./components/StatsPanel";
 import { ItemFormDialog } from "./dialogs/ItemFormDialog";
-
-const toast = (props: { title?: string; description?: string; variant?: "default" | "destructive" }) => {
-  console.log(`Toast: ${props.title} - ${props.description}`);
-};
+import { toast } from "sonner";
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<Inventory[]>([]);
@@ -50,11 +47,7 @@ export default function InventoryPage() {
         setInventory(data || []);
       } catch (error: any) {
         console.error("Error al cargar inventario:", error.message);
-        toast({
-          title: "Error",
-          description: "No se pudo cargar el inventario. " + error.message,
-          variant: "destructive"
-        });
+        toast("No se pudo cargar el inventario. " + error.message);
       } finally {
         setIsLoading(false);
       }
@@ -127,17 +120,10 @@ export default function InventoryPage() {
       });
       setIsAddDialogOpen(false);
       
-      toast({
-        title: "Éxito",
-        description: "El elemento ha sido añadido correctamente",
-      });
+      toast("El elemento ha sido añadido correctamente");
     } catch (error: any) {
       console.error("Error al añadir elemento:", error.message);
-      toast({
-        title: "Error",
-        description: "No se pudo añadir el elemento. " + error.message,
-        variant: "destructive"
-      });
+      toast( "No se pudo añadir el elemento. " + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -182,17 +168,10 @@ export default function InventoryPage() {
       setIsEditDialogOpen(false);
       setItemToEdit(null);
       
-      toast({
-        title: "Éxito",
-        description: "El elemento ha sido actualizado correctamente",
-      });
+      toast("El elemento ha sido actualizado correctamente");
     } catch (error: any) {
       console.error("Error al actualizar elemento:", error.message);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el elemento. " + error.message,
-        variant: "destructive"
-      });
+      toast("No se pudo actualizar el elemento. " + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -210,17 +189,10 @@ export default function InventoryPage() {
       // Actualizar el estado local
       setInventory(inventory.filter(item => item.id !== id));
       
-      toast({
-        title: "Éxito",
-        description: "El elemento ha sido eliminado correctamente",
-      });
+      toast("El elemento ha sido eliminado correctamente");
     } catch (error: any) {
       console.error("Error al eliminar elemento:", error.message);
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el elemento. " + error.message,
-        variant: "destructive"
-      });
+      toast("No se pudo eliminar el elemento. " + error.message);
     }
   };
 
