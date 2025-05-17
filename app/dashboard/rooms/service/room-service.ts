@@ -62,7 +62,7 @@ export const createRoom = async (room: Omit<Room, 'id'>): Promise<ServerActionRe
       capacity: room.capacity,
       price: room.price,
       devices: room.devices,
-      last_cleaned: room.lastCleaned,
+      last_cleaned: room.last_cleaned,
       notes: room.notes
     };
     
@@ -105,7 +105,7 @@ export const updateRoom = async (id: number, room: Partial<Room>): Promise<Serve
     if (room.capacity !== undefined) roomData.capacity = room.capacity;
     if (room.price !== undefined) roomData.price = room.price;
     if (room.devices !== undefined) roomData.devices = room.devices;
-    if (room.lastCleaned !== undefined) roomData.last_cleaned = room.lastCleaned;
+    if (room.last_cleaned !== undefined) roomData.last_cleaned = room.last_cleaned;
     if (room.notes !== undefined) roomData.notes = room.notes;
     
     const { data, error } = await supabase
