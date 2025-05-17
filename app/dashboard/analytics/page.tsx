@@ -539,11 +539,6 @@ export default function Page() {
             </TabsContent>
           </Tabs>
         </main>
-
-        {/* Footer */}
-        <footer className="border-t border-slate-200 dark:border-slate-700 p-4 text-center text-sm text-slate-500 dark:text-slate-400">
-          © 2025 Hotel Smart Control - Sistema de Gestión IoT
-        </footer>
       </div>
     </div>
   )

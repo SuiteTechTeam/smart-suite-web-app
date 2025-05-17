@@ -30,6 +30,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-mobile"
+import { toast } from "sonner"
+import { createRoom, deleteRoom, getRooms, updateRoom } from "./service/room-service"
 
 type RoomStatus = "occupied" | "vacant" | "maintenance"
 
@@ -56,99 +58,23 @@ const statusConfig = {
     color: "bg-sky-100 text-sky-700 border-sky-200",
     label: "Libre",
     icon: <Badge variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0 mr-2" />,
-  },
-  maintenance: {
+  },  maintenance: {
     color: "bg-amber-100 text-amber-700 border-amber-200",
     label: "Mantenimiento",
     icon: <Badge variant="outline" className="bg-amber-500 border-0 h-2 w-2 p-0 mr-2" />,
   },
 }
 
-// Datos de ejemplo
-const initialRooms: Room[] = [
-  {
-    id: 101,
-    name: "Habitación 101",
-    floor: 1,
-    status: "occupied",
-    type: "Individual",
-    capacity: 1,
-    price: 85,
-    devices: ["luz", "termostato", "cerradura", "wifi"],
-    lastCleaned: "2025-05-15",
-    notes: "Vista al jardín",
-  },
-  {
-    id: 102,
-    name: "Habitación 102",
-    floor: 1,
-    status: "vacant",
-    type: "Doble",
-    capacity: 2,
-    price: 120,
-    devices: ["luz", "termostato", "cerradura", "wifi"],
-    lastCleaned: "2025-05-16",
-    notes: "",
-  },
-  {
-    id: 103,
-    name: "Habitación 103",
-    floor: 1,
-    status: "maintenance",
-    type: "Suite",
-    capacity: 3,
-    price: 200,
-    devices: ["luz", "termostato", "cerradura", "wifi"],
-    lastCleaned: "2025-05-14",
-    notes: "Problema con el aire acondicionado",
-  },
-  {
-    id: 201,
-    name: "Habitación 201",
-    floor: 2,
-    status: "occupied",
-    type: "Doble",
-    capacity: 2,
-    price: 125,
-    devices: ["luz", "termostato", "cerradura", "wifi"],
-    lastCleaned: "2025-05-15",
-    notes: "",
-  },
-  {
-    id: 202,
-    name: "Habitación 202",
-    floor: 2,
-    status: "vacant",
-    type: "Individual",
-    capacity: 1,
-    price: 90,
-    devices: ["luz", "termostato", "cerradura", "wifi"],
-    lastCleaned: "2025-05-16",
-    notes: "",
-  },
-  {
-    id: 203,
-    name: "Habitación 203",
-    floor: 2,
-    status: "occupied",
-    type: "Suite",
-    capacity: 4,
-    price: 250,
-    devices: ["luz", "termostato", "cerradura", "wifi", "minibar"],
-    lastCleaned: "2025-05-15",
-    notes: "Cliente VIP",
-  },
-]
-
 const roomTypes = ["Individual", "Doble", "Suite", "Familiar"]
 const deviceOptions = ["luz", "termostato", "cerradura", "wifi", "minibar", "caja fuerte", "tv", "aire acondicionado"]
 
 export default function RoomsAdminPage() {
-  const [rooms, setRooms] = useState<Room[]>(initialRooms)
-  const [filteredRooms, setFilteredRooms] = useState<Room[]>(initialRooms)
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [filteredRooms, setFilteredRooms] = useState<Room[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<RoomStatus | "all">("all")
   const [floorFilter, setFloorFilter] = useState<number | "all">("all")
+  const [isLoading, setIsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null)
   const [isNewRoom, setIsNewRoom] = useState(false)
@@ -168,7 +94,6 @@ export default function RoomsAdminPage() {
     lastCleaned: new Date().toISOString().split("T")[0],
     notes: "",
   })
-
   useEffect(() => {
     if (isMobile) {
       setSidebarOpen(false)
@@ -176,6 +101,29 @@ export default function RoomsAdminPage() {
       setSidebarOpen(true)
     }
   }, [isMobile])
+
+  // Cargar habitaciones desde Supabase
+  useEffect(() => {
+    const fetchRooms = async () => {
+      setIsLoading(true);
+      try {
+        const result = await getRooms();
+        if (result.success && result.data) {
+          setRooms(result.data);
+          setFilteredRooms(result.data);
+        } else {
+          toast.error(result.message || "Error al cargar las habitaciones");
+        }
+      } catch (error: any) {
+        console.error("Error al cargar las habitaciones:", error.message);
+        toast.error("Error al cargar las habitaciones");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRooms();
+  }, []);
 
   useEffect(() => {
     filterRooms()
@@ -203,7 +151,6 @@ export default function RoomsAdminPage() {
 
     setFilteredRooms(filtered)
   }
-
   const handleCreateRoom = () => {
     setIsNewRoom(true)
     setFormData({
@@ -237,28 +184,51 @@ export default function RoomsAdminPage() {
     setIsEditDialogOpen(true)
   }
 
-  const handleDeleteRoom = (id: number) => {
+  const handleDeleteRoom = async (id: number) => {
     if (window.confirm("¿Estás seguro de que deseas eliminar esta habitación?")) {
-      setRooms(rooms.filter((room) => room.id !== id))
+      try {
+        const result = await deleteRoom(id);
+        if (result.success) {
+          setRooms(rooms.filter((room) => room.id !== id))
+          toast.success("Habitación eliminada correctamente");
+        } else {
+          toast.error(result.message || "Error al eliminar la habitación");
+        }
+      } catch (error: any) {
+        console.error("Error al eliminar habitación:", error.message);
+        toast.error("Error al eliminar la habitación");
+      }
     }
   }
 
-  const handleSaveRoom = () => {
-    if (isNewRoom) {
-      // Crear nueva habitación
-      const newId = Math.max(...rooms.map((r) => r.id), 0) + 1
-      const newRoom: Room = {
-        id: newId,
-        ...formData,
+  const handleSaveRoom = async () => {
+    try {
+      if (isNewRoom) {
+        // Crear nueva habitación
+        const result = await createRoom(formData);
+        if (result.success && result.data) {
+          setRooms([...rooms, result.data]);
+          toast.success("Habitación creada correctamente");
+        } else {
+          toast.error(result.message || "Error al crear la habitación");
+        }
+      } else if (currentRoom) {
+        // Actualizar habitación existente
+        const result = await updateRoom(currentRoom.id, formData);
+        if (result.success && result.data) {
+          setRooms(rooms.map((room) => (room.id === currentRoom.id ? { ...room, ...formData } : room)));
+          toast.success("Habitación actualizada correctamente");
+        } else {
+          toast.error(result.message || "Error al actualizar la habitación");
+        }
       }
-      setRooms([...rooms, newRoom])
-    } else if (currentRoom) {
-      // Actualizar habitación existente
-      setRooms(rooms.map((room) => (room.id === currentRoom.id ? { ...room, ...formData } : room)))
-    }
 
-    setIsEditDialogOpen(false)
-    setCurrentRoom(null)
+      setIsEditDialogOpen(false);
+      setCurrentRoom(null);
+    } catch (error: any) {
+      console.error("Error al guardar habitación:", error.message);
+      toast.error("Error al guardar la habitación");
+    }
   }
 
   const handleDeviceToggle = (device: string) => {
@@ -381,7 +351,13 @@ export default function RoomsAdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRooms.length > 0 ? (
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          Cargando habitaciones...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredRooms.length > 0 ? (
                       filteredRooms.map((room) => (
                         <TableRow key={room.id}>
                           <TableCell className="font-medium">{room.id}</TableCell>
