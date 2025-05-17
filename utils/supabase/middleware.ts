@@ -86,7 +86,7 @@ export const updateSession = async (request: NextRequest) => {
 
 			if (rolesError) {
 				console.error('Error fetching user roles:', rolesError);
-				return NextResponse.redirect(new URL('/', request.url));
+				return NextResponse.redirect(new URL('/sign-in', request.url));
 			}
 			console.log("Roles", userRoles);
 			// Extraer los roles del usuario
@@ -103,12 +103,12 @@ export const updateSession = async (request: NextRequest) => {
 					requiredRoles: routeConfig.roles,
 					userRoles: userRoleDescriptions
 				});
-				return NextResponse.redirect(new URL('/', request.url));
+				return NextResponse.redirect(new URL('/sign-in', request.url));	
 			}
 
 			// Si no tiene ningún rol, no puede acceder a rutas privadas
 			if (userRoleDescriptions.length === 0) {
-				return NextResponse.redirect(new URL('/', request.url));
+				return NextResponse.redirect(new URL('/sign-in', request.url));
 			}
 		}
 

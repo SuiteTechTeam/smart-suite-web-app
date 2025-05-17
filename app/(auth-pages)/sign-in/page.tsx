@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 export default async function Login(props: { searchParams: Promise<Message> }) {
   const searchParams = await props.searchParams;
   return (
-    <form className="flex-1 flex flex-col min-w-64">
+    <form className="flex-1 flex flex-col">
       <h1 className="text-2xl font-medium">Iniciar sesión</h1>
       <p className="text-sm text-foreground">
         ¿No tienes una cuenta?{" "}

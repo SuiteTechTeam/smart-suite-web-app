@@ -1,6 +1,3 @@
-import { RollerCoaster } from "lucide-react";
-import path from "path";
-
 export const routesConfig = {
   public: {
     signIn: {
@@ -15,16 +12,14 @@ export const routesConfig = {
     authCallback: {
       path: '/auth/callback'
     },
-
     contact: {
       path: '/contact'
+    },
+    home: {
+      path: "/"
     }
   },
   private: {
-    home: {
-      path: "/",
-      roles: ["admin", "worker"]
-    },
     dashboard: {
       path: '/dashboard',
       roles: ['admin', 'worker']
