@@ -289,55 +289,6 @@ export default function RoomsAdminPage() {
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Sidebar */}
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transition-transform duration-300 ease-in-out md:relative md:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-            <div className="flex items-center space-x-2">
-              <Home className="h-6 w-6 text-slate-700 dark:text-slate-300" />
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Hotel Smart Control</h1>
-            </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Sistema de gestión IoT</p>
-          </div>
-
-          <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400">Administración</h2>
-            </div>
-          </div>
-
-          <ScrollArea className="flex-1 p-3">
-            <div className="space-y-1">
-              <button
-                onClick={() => router.push("/")}
-                className="w-full flex items-center p-3 rounded-lg text-left transition-colors text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/30"
-              >
-                <Home className="h-4 w-4 mr-3" />
-                <span>Dashboard</span>
-              </button>
-
-              <button
-                onClick={() => router.push("/admin/rooms")}
-                className="w-full flex items-center p-3 rounded-lg text-left transition-colors bg-slate-100 dark:bg-slate-700/50 text-slate-900 dark:text-white"
-              >
-                <Layers className="h-4 w-4 mr-3" />
-                <span>Habitaciones</span>
-              </button>
-
-              <button className="w-full flex items-center p-3 rounded-lg text-left transition-colors text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/30">
-                <Settings className="h-4 w-4 mr-3" />
-                <span>Configuración</span>
-              </button>
-            </div>
-          </ScrollArea>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
@@ -502,11 +453,6 @@ export default function RoomsAdminPage() {
             </CardFooter>
           </Card>
         </main>
-
-        {/* Footer */}
-        <footer className="border-t border-slate-200 dark:border-slate-700 p-4 text-center text-sm text-slate-500 dark:text-slate-400">
-          © 2025 Hotel Smart Control - Sistema de Gestión IoT
-        </footer>
       </div>
 
       {/* Dialog para crear/editar habitación */}
