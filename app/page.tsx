@@ -21,7 +21,7 @@ export default function Home() {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/inventory">Acceder</Link>
+                <Link href="/dashboard/inventory">Acceder</Link>
               </Button>
             </CardFooter>
           </Card>
@@ -36,7 +36,7 @@ export default function Home() {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/rooms">Acceder</Link>
+                <Link href="/dashboard/rooms">Acceder</Link>
               </Button>
             </CardFooter>
           </Card>
@@ -51,7 +51,7 @@ export default function Home() {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/customers">Acceder</Link>
+                <Link href="/dashboard/customers">Acceder</Link>
               </Button>
             </CardFooter>
           </Card>
@@ -66,7 +66,7 @@ export default function Home() {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/bookings">Acceder</Link>
+                <Link href="/dashboard/bookings">Acceder</Link>
               </Button>
             </CardFooter>
           </Card>
