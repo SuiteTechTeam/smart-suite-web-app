@@ -1,8 +1,8 @@
+import { RollerCoaster } from "lucide-react";
+import path from "path";
+
 export const routesConfig = {
   public: {
-    home: {
-      path: '/'
-    },
     signIn: {
       path: '/sign-in'
     },
@@ -21,6 +21,10 @@ export const routesConfig = {
     }
   },
   private: {
+    home: {
+      path: "/",
+      roles: ["admin", "worker"]
+    },
     dashboard: {
       path: '/dashboard',
       roles: ['admin', 'worker']
