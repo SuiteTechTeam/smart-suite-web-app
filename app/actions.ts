@@ -4,55 +4,44 @@ import { encodedRedirect } from "@/utils/utils";
 import { createClient } from "@/utils/supabase/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { signIn, signUp } from "@/lib/services/auth-service";
 
 export const signUpAction = async (formData: FormData) => {
-  const email = formData.get("email")?.toString();
-  const password = formData.get("password")?.toString();
-  const supabase = await createClient();
-  const origin = (await headers()).get("origin");
+  const name = formData.get("name")?.toString() || "";
+  const surname = formData.get("surname")?.toString() || "";
+  const phone = formData.get("phone")?.toString() || "";
+  const email = formData.get("email")?.toString() || "";
+  const password = formData.get("password")?.toString() || "";
+  const roleId = Number(formData.get("roleId"));
 
-  if (!email || !password) {
+  if (!email || !password || !roleId) {
     return encodedRedirect(
       "error",
       "/sign-up",
-      "Email and password are required",
+      "Todos los campos son obligatorios."
     );
   }
 
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${origin}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    console.error(error.code + " " + error.message);
-    return encodedRedirect("error", "/sign-up", error.message);
-  } else {
-    return encodedRedirect(
-      "success",
-      "/sign-up",
-      "Thanks for signing up! Please check your email for a verification link.",
-    );
+  const result = await signUp({ name, surname, phone, email, password, roleId });
+  if (!result.success) {
+    return encodedRedirect("error", "/sign-up", result.message || "Error al registrarse");
   }
+
+  // Redirigir a selección de tipo de usuario si es necesario, o a login
+  return encodedRedirect("success", "/sign-in", "Registro exitoso. Inicia sesión.");
 };
 
 export const signInAction = async (formData: FormData) => {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const supabase = await createClient();
+  const roleId = Number(formData.get("roleId")) || 2; // Default to Admin if not provided
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    return encodedRedirect("error", "/sign-in", error.message);
+  const result = await signIn(email, password, roleId);
+  if (!result.success) {
+    return encodedRedirect("error", "/sign-in", result.message || "Error al iniciar sesión");
   }
 
+  // Guardar en localStorage debe hacerse en el cliente, aquí solo redirigimos
   return redirect("/dashboard/analytics");
 };
 

@@ -4,10 +4,16 @@ import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
-import { GitHubSignInButton } from "@/components/auth/github-sign-in-button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem
+} from "@/components/ui/select";
 
+// Agrega campos para nombre, apellido, teléfono y tipo de usuario (roleId) al formulario de registro
 export default async function Signup(props: {
   searchParams: Promise<Message>;
 }) {
@@ -22,7 +28,7 @@ export default async function Signup(props: {
 
   return (
     <>
-      <form className="flex flex-col">
+      <form className="flex-1 flex flex-col w-full max-w-xl mx-auto">
         <h1 className="text-2xl font-medium">Registro</h1>
         <p className="text-sm text text-foreground">
           ¿Ya tienes una cuenta?{" "}
@@ -30,21 +36,17 @@ export default async function Signup(props: {
             Inicia sesión
           </Link>
         </p>
-        <div className="flex flex-col gap-2 [&>input]:mb-3 mt-8">
-          <GoogleSignInButton />
-          <GitHubSignInButton />
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <Separator />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                O continúa con
-              </span>
-            </div>
-          </div>
+        <div className="flex flex-col gap-2 [&>input]:mb-3 mt-8 w-full max-w-xs mx-auto">
+          {/* <GoogleSignInButton /> */}
+          {/* <GitHubSignInButton /> */}
+          <Label htmlFor="name">Nombre</Label>
+          <Input name="name" placeholder="Tu nombre" required className="w-full" />
+          <Label htmlFor="surname">Apellido</Label>
+          <Input name="surname" placeholder="Tu apellido" required className="w-full" />
+          <Label htmlFor="phone">Teléfono</Label>
+          <Input name="phone" placeholder="Tu teléfono" required className="w-full" />
           <Label htmlFor="email">Correo electrónico</Label>
-          <Input name="email" placeholder="tu@ejemplo.com" required />
+          <Input name="email" placeholder="tu@ejemplo.com" required className="w-full" />
           <Label htmlFor="password">Contraseña</Label>
           <Input
             type="password"
@@ -52,7 +54,19 @@ export default async function Signup(props: {
             placeholder="Tu contraseña"
             minLength={6}
             required
+            className="w-full"
           />
+          <Label htmlFor="roleId">Tipo de usuario</Label>
+          <Select name="roleId" defaultValue="2" required>
+            <SelectTrigger className="mb-3 w-full">
+              <SelectValue placeholder="Selecciona un rol" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Owner</SelectItem>
+              <SelectItem value="2">Admin</SelectItem>
+              <SelectItem value="3">Guest</SelectItem>
+            </SelectContent>
+          </Select>
           <SubmitButton formAction={signUpAction} pendingText="Registrando...">
             Registrarse
           </SubmitButton>
