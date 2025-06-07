@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn, signUp } from "@/lib/services/auth-service";
 
+// Versión para FormData (legacy)
 export const signUpAction = async (formData: FormData) => {
   const name = formData.get("name")?.toString() || "";
   const surname = formData.get("surname")?.toString() || "";
@@ -29,6 +30,41 @@ export const signUpAction = async (formData: FormData) => {
 
   // Redirigir a selección de tipo de usuario si es necesario, o a login
   return encodedRedirect("success", "/sign-in", "Registro exitoso. Inicia sesión.");
+};
+
+// Nueva versión para objetos
+export const signUpActionWithData = async (userData: {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  roleId: string;
+}) => {
+  const { name, email, phone, password, roleId } = userData;
+
+  if (!email || !password || !roleId || !name) {
+    throw new Error("Todos los campos son obligatorios.");
+  }
+
+  // Dividir el nombre completo en nombre y apellido
+  const nameParts = name.trim().split(' ');
+  const firstName = nameParts[0] || "";
+  const surname = nameParts.slice(1).join(' ') || "";
+
+  const result = await signUp({ 
+    name: firstName, 
+    surname, 
+    phone, 
+    email, 
+    password, 
+    roleId: Number(roleId) 
+  });
+
+  if (!result.success) {
+    throw new Error(result.message || "Error al registrarse");
+  }
+
+  return { success: true, message: "Registro exitoso" };
 };
 
 export const signInAction = async (formData: FormData) => {
