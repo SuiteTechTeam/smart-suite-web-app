@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, ArrowLeft, CheckCircle2, Users, Shield, Crown, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { signUpActionWithData } from "@/app/actions";
+import { signIn } from "@/lib/services/auth-service";
+import Link from "next/link";
 
 export default function SmartSuiteSignup() {
   const [step, setStep] = useState(1);
@@ -75,11 +77,32 @@ export default function SmartSuiteSignup() {
         password: form.password,
         roleId: form.roleId,
       });
-      setMessage({ type: "success", text: "Registro exitoso. Redirigiendo..." });
-      toast.success("Registro exitoso.");
-      setTimeout(() => {
-        window.location.href = "/sign-in";
-      }, 2000);
+      // Login automático tras registro
+      const loginResult = await signIn(form.email, form.password, Number(form.roleId));      if (loginResult.success && loginResult.data) {
+        // Guardar token y usuario en localStorage y cookies
+        localStorage.setItem('auth_token', loginResult.data.token);
+        localStorage.setItem('auth_user', JSON.stringify({
+          id: loginResult.data.id,
+          email: loginResult.data.email,
+          roleId: form.roleId
+        }));
+        
+        // Guardar en cookies para el middleware
+        document.cookie = `auth_token=${loginResult.data.token}; path=/; max-age=86400; secure; samesite=strict`;
+        document.cookie = `auth_user=${JSON.stringify({
+          id: loginResult.data.id,
+          email: loginResult.data.email,
+          roleId: form.roleId
+        })}; path=/; max-age=86400; secure; samesite=strict`;
+        
+        setMessage({ type: "success", text: "Registro exitoso. Redirigiendo al dashboard..." });
+        toast.success("Registro exitoso. Redirigiendo al dashboard...");
+        setTimeout(() => {
+          window.location.href = "/dashboard/analytics";
+        }, 1500);
+      } else {
+        setMessage({ type: "error", text: loginResult.message || "No se pudo iniciar sesión automáticamente." });
+      }
     } catch (error: any) {
       setMessage({ type: "error", text: error.message || "Error al registrarse. Intenta nuevamente." });
     } finally {
@@ -297,16 +320,15 @@ export default function SmartSuiteSignup() {
                   <button type="button" className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 hover:border-gray-300 hover:shadow-md flex items-center justify-center font-bold text-gray-700 text-lg transition-all">
                     in
                   </button>
-                </div>
-              </div>
+                </div>              </div>
 
               {/* Login Link */}
               <div className="text-center mt-8">
                 <p className="text-gray-600">
                   Already have an account?{" "}
-                  <span className="text-blue-600 font-semibold cursor-pointer hover:text-blue-700 hover:underline transition-colors">
+                  <Link href="/sign-in" className="text-blue-600 font-semibold cursor-pointer hover:text-blue-700 hover:underline transition-colors">
                     Log In
-                  </span>
+                  </Link>
                 </p>
               </div>
             </div>
@@ -420,15 +442,13 @@ export default function SmartSuiteSignup() {
                 </Button>
               </div>
 
-              {message && <FormMessage message={message} />}
-
-              {/* Login Link */}
+              {message && <FormMessage message={message} />}              {/* Login Link */}
               <div className="text-center mt-8">
                 <p className="text-gray-600">
                   Already have an account?{" "}
-                  <span className="text-blue-600 font-semibold cursor-pointer hover:text-blue-700 hover:underline transition-colors">
+                  <Link href="/sign-in" className="text-blue-600 font-semibold cursor-pointer hover:text-blue-700 hover:underline transition-colors">
                     Log In
-                  </span>
+                  </Link>
                 </p>
               </div>
             </div>
