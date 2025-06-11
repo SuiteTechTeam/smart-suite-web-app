@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,11 @@ import { Eye, EyeOff, ArrowLeft, CheckCircle2, Users, Shield, Crown, Sparkles } 
 import { toast } from "sonner";
 import { signUpActionWithData } from "@/app/actions";
 import { signIn } from "@/lib/services/auth-service";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function SmartSuiteSignup() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: "",
@@ -25,9 +27,33 @@ export default function SmartSuiteSignup() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [pending, setPending] = useState(false);
-  type Message = { type: "error" | "success"; text: string } | null;
+  const [pending, setPending] = useState(false);  type Message = { type: "error" | "success"; text: string } | null;
   const [message, setMessage] = useState<Message>(null);
+
+  // Verificar si el usuario ya está autenticado
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('auth_token');
+      const user = localStorage.getItem('auth_user');
+      
+      if (token && user) {
+        try {
+          const userData = JSON.parse(user);
+          if (userData.id && userData.email && token.trim() !== '') {
+            // Usuario ya autenticado, redirigir al dashboard
+            router.replace('/dashboard/analytics');
+            return;
+          }
+        } catch (error) {
+          // Si hay error al parsear, limpiar datos corruptos
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+        }
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;

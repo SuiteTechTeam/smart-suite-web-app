@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "@/lib/services/auth-service";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LogIn, Users, Shield, Crown, Sparkles, CheckCircle2 } from "lucide-react";
 import {
   Select,
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/select";
 
 export default function Login() {
+  const router = useRouter();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -24,6 +26,31 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
+  // Verificar si el usuario ya está autenticado
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('auth_token');
+      const user = localStorage.getItem('auth_user');
+      
+      if (token && user) {
+        try {
+          const userData = JSON.parse(user);
+          if (userData.id && userData.email && token.trim() !== '') {
+            // Usuario ya autenticado, redirigir al dashboard
+            router.replace('/dashboard/analytics');
+            return;
+          }
+        } catch (error) {
+          // Si hay error al parsear, limpiar datos corruptos
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+        }
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

@@ -17,15 +17,45 @@ export async function middleware(request: NextRequest) {
   
   // Verificar si es una ruta del dashboard (privada)
   if (pathname.startsWith('/dashboard')) {
-    // Obtener el token de las cookies
+    // Obtener el token y el usuario de las cookies
     const authToken = request.cookies.get('auth_token')?.value;
+    const authUser = request.cookies.get('auth_user')?.value;
     
-    // Si no hay token, redirigir al login
-    if (!authToken) {
-      return NextResponse.redirect(new URL('/sign-in', request.url));
+    // Si no hay token o usuario, redirigir al login
+    if (!authToken || !authUser) {
+      const response = NextResponse.redirect(new URL('/sign-in', request.url));
+      // Limpiar cualquier cookie residual
+      response.cookies.delete('auth_token');
+      response.cookies.delete('auth_user');
+      return response;
     }
     
-    // Si hay token, permitir acceso
+    // Verificar que el token no esté vacío o sea inválido
+    if (authToken.trim() === '' || authToken === 'undefined' || authToken === 'null') {
+      const response = NextResponse.redirect(new URL('/sign-in', request.url));
+      response.cookies.delete('auth_token');
+      response.cookies.delete('auth_user');
+      return response;
+    }
+    
+    // Verificar que la información del usuario sea válida
+    try {
+      const userData = JSON.parse(authUser);
+      if (!userData.id || !userData.email) {
+        const response = NextResponse.redirect(new URL('/sign-in', request.url));
+        response.cookies.delete('auth_token');
+        response.cookies.delete('auth_user');
+        return response;
+      }
+    } catch (error) {
+      // Si no se puede parsear el usuario, redirigir al login
+      const response = NextResponse.redirect(new URL('/sign-in', request.url));
+      response.cookies.delete('auth_token');
+      response.cookies.delete('auth_user');
+      return response;
+    }
+    
+    // Si hay token válido, permitir acceso
     return NextResponse.next();
   }
   
