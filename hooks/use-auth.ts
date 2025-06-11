@@ -89,55 +89,6 @@ export function useAuth() {
     window.location.replace('/sign-in');
   };
 
-  return {
-    isAuthenticated,
-    user,
-    logout,
-    isLoading: isAuthenticated === null
-  };
-}
-        document.cookie = 'auth_user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        setIsAuthenticated(false);
-      }
-    };
-
-    checkAuth();
-
-    // Escuchar cambios en el localStorage (para manejar logout en otras pestañas)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'auth_token' || e.key === 'auth_user') {
-        checkAuth();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const logout = () => {
-    // Limpiar localStorage
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    
-    // Limpiar cookies
-    const cookieOptions = [
-      'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;',
-      'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=' + window.location.hostname + ';',
-      'auth_user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;',
-      'auth_user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=' + window.location.hostname + ';'
-    ];
-    
-    cookieOptions.forEach(cookieString => {
-      document.cookie = cookieString;
-    });
-
-    setIsAuthenticated(false);
-    setUser(null);
-    
-    // Redirigir al login
-    window.location.replace('/sign-in');
-  };
-
   const redirectToLogin = () => {
     logout();
   };
