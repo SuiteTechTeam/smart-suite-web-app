@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { LogOut, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import {
   Dialog,
   DialogContent,
@@ -13,62 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardContent({ children }: { children: React.ReactNode }) {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const token = localStorage.getItem('auth_token');
-        const userData = localStorage.getItem('auth_user');
-
-        if (!token || !userData) {
-          window.location.replace('/sign-in');
-          return;
-        }
-
-        // Verificar que el token no esté vacío o sea inválido
-        if (token.trim() === '' || token === 'undefined' || token === 'null') {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          window.location.replace('/sign-in');
-          return;
-        }
-
-        // Verificar que los datos del usuario sean válidos
-        const parsedUser = JSON.parse(userData);
-        if (!parsedUser.id || !parsedUser.email) {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          window.location.replace('/sign-in');
-          return;
-        }
-
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error checking authentication:', error);
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
-        window.location.replace('/sign-in');
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  // Mostrar loading mientras se verifica la autenticación
-  if (isAuthenticated === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   const handleLogout = () => {
     // Limpiar localStorage
     localStorage.removeItem('auth_token');
@@ -119,7 +66,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link href="/dashboard/customers" className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">
               Customers 
             </Link>
-          </div>          <div className="flex items-center space-x-4">
+          </div>
+          
+          <div className="flex items-center space-x-4">
             <Button 
               onClick={() => setShowLogoutDialog(true)}
               variant="outline"
@@ -166,5 +115,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthGuard>
+      <DashboardContent>{children}</DashboardContent>
+    </AuthGuard>
   );
 }
