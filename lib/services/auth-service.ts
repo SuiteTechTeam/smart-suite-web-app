@@ -1,4 +1,4 @@
-const BASE_URL = "http://smart-suite-web-service.azurewebsites.net/api/v1";
+const BASE_URL = "http://localhost:5000/api/v1";
 
 export interface AuthenticatedUser {
   id: number;

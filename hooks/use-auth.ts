@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
+import { AuthContext } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -100,4 +102,17 @@ export function useAuth() {
     redirectToLogin,
     isLoading: isAuthenticated === null
   };
+}
+
+export function useAuthGuard(redirectTo = "/sign-in") {
+  const { user, loading } = useContext(AuthContext);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace(redirectTo);
+    }
+  }, [user, loading, router, redirectTo]);
+
+  return { user, loading };
 }

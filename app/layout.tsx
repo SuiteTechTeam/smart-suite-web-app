@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="es" className={urbanist.className} suppressHydrationWarning>
-			<body className="bg-background text-foreground">
+			<body className="bg-background text-foreground min-h-screen">
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="system"
@@ -35,23 +35,16 @@ export default function RootLayout({
 					disableTransitionOnChange
 				>
 					<AuthProvider>
-						
-						{children}
-						<Toaster />
-						<footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-4">
-							<p>
-								Powered by{" "}
-								<a
-									href="#"
-									target="_blank"
-									className="font-bold hover:underline"
-									rel="noreferrer"
-								>
-									Smart Suite
-								</a>
-							</p>
-							<ThemeSwitcher />
-						</footer>
+						<div className="flex flex-col min-h-screen justify-between">
+							<main className="flex-1 flex flex-col">
+								{children}
+							</main>
+							<Toaster />
+							<footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-4 bg-background">
+								
+								<ThemeSwitcher />
+							</footer>
+						</div>
 					</AuthProvider>
 				</ThemeProvider>
 			</body>

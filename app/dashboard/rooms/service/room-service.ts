@@ -1,9 +1,5 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
-import { ServerActionResult } from "@/types/interfaces";
-import { revalidatePath } from "next/cache";
-
 export interface Room {
   id: number;
   name: string;

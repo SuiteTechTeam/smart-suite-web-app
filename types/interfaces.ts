@@ -70,11 +70,6 @@ export interface Profile {
   district: number | null;
 }
 
-export interface SupabaseResponse<T> {
-  data: T[] | null;
-  error: Error | null;
-}
-
 // Interfaces para las acciones de servidor
 export interface ServerActionResult {
   success: boolean;

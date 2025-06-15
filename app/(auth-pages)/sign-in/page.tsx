@@ -1,13 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { signIn } from "@/lib/services/auth-service";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, LogIn, Users, Shield, Crown, Sparkles, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, LogIn, Users, Shield, Crown, CheckCircle2 } from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -27,29 +27,21 @@ export default function Login() {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
-  // Verificar si el usuario ya está autenticado
   useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('auth_token');
-      const user = localStorage.getItem('auth_user');
-      
-      if (token && user) {
-        try {
-          const userData = JSON.parse(user);
-          if (userData.id && userData.email && token.trim() !== '') {
-            // Usuario ya autenticado, redirigir al dashboard
-            router.replace('/dashboard/analytics');
-            return;
-          }
-        } catch (error) {
-          // Si hay error al parsear, limpiar datos corruptos
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
+    const token = localStorage.getItem('auth_token');
+    const user = localStorage.getItem('auth_user');
+    if (token && user) {
+      try {
+        const userData = JSON.parse(user);
+        if (userData.id && userData.email && token.trim() !== '') {
+          router.replace('/dashboard/analytics');
+          return;
         }
+      } catch (error) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
       }
-    };
-
-    checkAuth();
+    }
   }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,24 +58,19 @@ export default function Login() {
     setMessage(null);
     try {
       const result = await signIn(form.email, form.password, Number(form.roleId));
-      
       if (result.success && result.data) {
-        // Guardar en localStorage y cookies
         localStorage.setItem('auth_token', result.data.token);
         localStorage.setItem('auth_user', JSON.stringify({
           id: result.data.id,
           email: result.data.email,
           roleId: form.roleId
         }));
-        
-        // Guardar en cookies para el middleware
         document.cookie = `auth_token=${result.data.token}; path=/; max-age=86400; secure; samesite=strict`;
         document.cookie = `auth_user=${JSON.stringify({
           id: result.data.id,
           email: result.data.email,
           roleId: form.roleId
         })}; path=/; max-age=86400; secure; samesite=strict`;
-        
         setMessage({ type: "success", text: "Login exitoso. Redirigiendo..." });
         setTimeout(() => {
           window.location.href = "/dashboard/analytics";
@@ -104,18 +91,12 @@ export default function Login() {
     "1": <Crown className="w-5 h-5" />
   };
 
-  const roleLabels = {
-    "3": "Guest",
-    "2": "Admin", 
-    "1": "Owner"
-  };
-
   const FormMessage = ({ message }: { message: { type: "error" | "success"; text: string } | null }) => {
     if (!message) return null;
     return (
       <div className={`p-4 rounded-xl text-sm font-medium flex items-center gap-2 ${
         message.type === 'error'
-          ? 'bg-red-50 text-red-700 border border-red-100'
+          ? 'bg-destructive/10 text-destructive border border-destructive/20'
           : 'bg-green-50 text-green-700 border border-green-100'
       }`}>
         {message.type === 'success' && <CheckCircle2 size={16} />}
@@ -123,79 +104,58 @@ export default function Login() {
       </div>
     );
   };
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="bg-white/95 backdrop-blur-sm shadow-2xl border-0 rounded-3xl overflow-hidden">
-          <div className="p-10">
-            {/* Header */}
-            <div className="text-center mb-10">
-              <div className="relative mb-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg">
-                  <LogIn className="w-8 h-8 text-white" />
-                </div>
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">Welcome Back</h1>
-              <p className="text-gray-600 text-lg">Sign in to your account</p>
-            </div>
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              {/* Role Selection */}
+  return (
+    <div className="flex flex-1 min-h-[80vh] items-center justify-center py-8">
+      <div className="w-full max-w-md">
+        <Card className="bg-card text-card-foreground border border-border shadow-2xl rounded-2xl">
+          <CardHeader className="text-center mb-2">
+            <div className="flex flex-col items-center mb-2 gap-2">
+              <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center shadow-lg mb-3">
+                <LogIn className="w-7 h-7 text-primary-foreground" />
+              </div>
+              <CardTitle className="text-2xl font-bold mb-1">Bienvenido</CardTitle>
+              <CardDescription className="text-muted-foreground text-base">Inicia sesión en tu cuenta</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-5" onSubmit={handleSubmit}>
               <div>
-                <Label className="text-sm font-semibold text-gray-700 mb-3 block">Account Type</Label>
+                <Label className="text-sm font-semibold text-foreground mb-2 block">Tipo de cuenta</Label>
                 <Select value={form.roleId} onValueChange={handleRoleChange} required>
-                  <SelectTrigger className="h-14 border-2 border-gray-200 rounded-xl focus:border-blue-500 text-base transition-colors">
+                  <SelectTrigger className="h-12 border border-border bg-background text-foreground rounded-lg focus:border-primary text-base">
                     <div className="flex items-center gap-3">
                       {roleIcons[form.roleId as keyof typeof roleIcons]}
-                      <SelectValue placeholder="Select your role" />
+                      <SelectValue placeholder="Selecciona tu rol" />
                     </div>
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1" className="h-12">
-                      <div className="flex items-center gap-3">
-                        <Crown className="w-5 h-5 text-purple-600" />
-                        <span>Owner</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="2" className="h-12">
-                      <div className="flex items-center gap-3">
-                        <Shield className="w-5 h-5 text-emerald-600" />
-                        <span>Admin</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="3" className="h-12">
-                      <div className="flex items-center gap-3">
-                        <Users className="w-5 h-5 text-blue-600" />
-                        <span>Guest</span>
-                      </div>
-                    </SelectItem>
+                  <SelectContent className="bg-card text-foreground">
+                    <SelectItem value="1" className="h-10">Owner</SelectItem>
+                    <SelectItem value="2" className="h-10">Admin</SelectItem>
+                    <SelectItem value="3" className="h-10">Guest</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              {/* Email */}
               <div>
-                <Label className="text-sm font-semibold text-gray-700 mb-2 block">Email Address</Label>
-                <Input 
-                  name="email" 
+                <Label className="text-sm font-semibold text-foreground mb-1 block">Correo electrónico</Label>
+                <Input
+                  name="email"
                   type="email"
-                  value={form.email} 
-                  onChange={handleChange} 
-                  placeholder="Enter your email" 
-                  required 
-                  className="h-14 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 text-base transition-colors"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="Ingresa tu email"
+                  required
+                  className="h-12 border border-border bg-background text-foreground rounded-lg focus:border-primary focus:ring-0 text-base"
                 />
               </div>
-
-              {/* Password */}
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <Label className="text-sm font-semibold text-gray-700">Password</Label>
-                  <Link 
-                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors font-medium" 
+                <div className="flex justify-between items-center mb-1">
+                  <Label className="text-sm font-semibold text-foreground">Contraseña</Label>
+                  <Link
+                    className="text-sm text-primary hover:underline font-medium"
                     href="/forgot-password"
                   >
-                    Forgot password?
+                    ¿Olvidaste tu contraseña?
                   </Link>
                 </div>
                 <div className="relative">
@@ -204,84 +164,47 @@ export default function Login() {
                     name="password"
                     value={form.password}
                     onChange={handleChange}
-                    placeholder="Enter your password"
+                    placeholder="Ingresa tu contraseña"
                     required
-                    className="h-14 pr-14 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 text-base transition-colors"
+                    className="h-12 pr-12 border border-border bg-background text-foreground rounded-lg focus:border-primary focus:ring-0 text-base"
                   />
                   <button
                     type="button"
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
               </div>
-
-              {/* Login Button */}
               <Button
                 type="submit"
-                className="w-full h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl text-base shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg text-base shadow-lg hover:shadow-xl transition-all duration-300"
                 disabled={pending}
               >
                 {pending ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Signing in...
+                    Iniciando sesión...
                   </>
                 ) : (
-                  'Sign In'
+                  'Iniciar sesión'
                 )}
               </Button>
-
               {message && <FormMessage message={message} />}
-
-              {/* Social Login */}
-              <div className="text-center mt-8">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white text-gray-500">or continue with</span>
-                  </div>
-                </div>
-                <div className="flex justify-center space-x-4 mt-6">
-                  <button 
-                    type="button" 
-                    className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 hover:border-gray-300 hover:shadow-md flex items-center justify-center font-bold text-gray-700 text-lg transition-all"
+              <div className="text-center mt-6">
+                <p className="text-muted-foreground">
+                  ¿No tienes una cuenta?{' '}
+                  <Link
+                    href="/sign-up"
+                    className="text-primary font-semibold hover:underline"
                   >
-                    G
-                  </button>
-                  <button 
-                    type="button" 
-                    className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 hover:border-gray-300 hover:shadow-md flex items-center justify-center font-bold text-gray-700 text-lg transition-all"
-                  >
-                    f
-                  </button>
-                  <button 
-                    type="button" 
-                    className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 hover:border-gray-300 hover:shadow-md flex items-center justify-center font-bold text-gray-700 text-lg transition-all"
-                  >
-                    in
-                  </button>
-                </div>
-              </div>
-
-              {/* Sign Up Link */}
-              <div className="text-center mt-8">
-                <p className="text-gray-600">
-                  Don't have an account?{" "}
-                  <Link 
-                    href="/sign-up" 
-                    className="text-blue-600 font-semibold hover:text-blue-700 hover:underline transition-colors"
-                  >
-                    Sign Up
+                    Regístrate
                   </Link>
                 </p>
               </div>
             </form>
-          </div>
+          </CardContent>
         </Card>
       </div>
     </div>

@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Inventory } from "@/types/interfaces";
-import { createClient } from "@/utils/supabase/client";
-import { deleteInventoryItem, updateInventoryItem } from "./service/inventory-service";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, PlusCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +12,8 @@ import { InventoryTable } from "./components/InventoryTable";
 import { StatsPanel } from "./components/StatsPanel";
 import { ItemFormDialog } from "./dialogs/ItemFormDialog";
 import { toast } from "sonner";
+
+const BASE_URL = "http://smart-suite-web-service.azurewebsites.net/api/v1";
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<Inventory[]>([]);
@@ -32,28 +32,23 @@ export default function InventoryPage() {
   const [itemToEdit, setItemToEdit] = useState<Inventory & { customType?: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Obtener inventario del backend
+  const fetchInventory = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/inventory`);
+      if (!res.ok) throw new Error("No se pudo obtener el inventario");
+      const data = await res.json();
+      setInventory(data || []);
+    } catch (error: any) {
+      toast("No se pudo cargar el inventario. " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('inventory')
-          .select('*')
-          .order('id', { ascending: true });
-        
-        if (error) throw error;
-        
-        setInventory(data || []);
-      } catch (error: any) {
-        console.error("Error al cargar inventario:", error.message);
-        toast("No se pudo cargar el inventario. " + error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchData();
+    fetchInventory();
   }, []);
   
   // Extraer todos los tipos únicos para el filtro
@@ -93,25 +88,15 @@ export default function InventoryPage() {
         stock: newItem.stock || 0
       };
       
-      // Este servicio ya existe
-      const result = await import("./service/inventory-service").then(mod => {
-        return mod.createInventoryItem(itemToAdd);
+      const res = await fetch(`${BASE_URL}/inventory`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(itemToAdd)
       });
       
-      if (!result.success) {
-        throw new Error(result.message);
-      }
+      if (!res.ok) throw new Error("No se pudo añadir el elemento");
       
-      // Refrescar inventario
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .order('id', { ascending: true });
-        
-      if (error) throw error;
-      
-      setInventory(data || []);
+      await fetchInventory();
       setNewItem({
         name: "",
         type: "",
@@ -122,8 +107,7 @@ export default function InventoryPage() {
       
       toast("El elemento ha sido añadido correctamente");
     } catch (error: any) {
-      console.error("Error al añadir elemento:", error.message);
-      toast( "No se pudo añadir el elemento. " + error.message);
+      toast("No se pudo añadir el elemento. " + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -149,28 +133,20 @@ export default function InventoryPage() {
       
       delete itemToUpdate.customType;
       
-      const result = await updateInventoryItem(itemToEdit.id, itemToUpdate);
+      const res = await fetch(`${BASE_URL}/inventory/${itemToEdit.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(itemToUpdate)
+      });
       
-      if (!result.success) {
-        throw new Error(result.message);
-      }
+      if (!res.ok) throw new Error("No se pudo actualizar el elemento");
       
-      // Refrescar inventario
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .order('id', { ascending: true });
-        
-      if (error) throw error;
-      
-      setInventory(data || []);
+      await fetchInventory();
       setIsEditDialogOpen(false);
       setItemToEdit(null);
       
       toast("El elemento ha sido actualizado correctamente");
     } catch (error: any) {
-      console.error("Error al actualizar elemento:", error.message);
       toast("No se pudo actualizar el elemento. " + error.message);
     } finally {
       setIsSubmitting(false);
@@ -180,18 +156,15 @@ export default function InventoryPage() {
   // Eliminar ítem
   const handleDeleteItem = async (id: number) => {
     try {
-      const result = await deleteInventoryItem(id);
+      const res = await fetch(`${BASE_URL}/inventory/${id}`, { method: "DELETE" });
       
-      if (!result.success) {
-        throw new Error(result.message);
-      }
+      if (!res.ok) throw new Error("No se pudo eliminar el elemento");
       
       // Actualizar el estado local
       setInventory(inventory.filter(item => item.id !== id));
       
       toast("El elemento ha sido eliminado correctamente");
     } catch (error: any) {
-      console.error("Error al eliminar elemento:", error.message);
       toast("No se pudo eliminar el elemento. " + error.message);
     }
   };

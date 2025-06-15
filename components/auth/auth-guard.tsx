@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuthGuard } from "@/hooks/use-auth";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -8,63 +9,9 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children, fallback }: AuthGuardProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-  const router = useRouter();
+  const { user, loading } = useAuthGuard();
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-
-    const checkAuth = () => {
-      try {
-        // Solo verificar localStorage después de que el componente esté montado
-        const token = localStorage.getItem('auth_token');
-        const userData = localStorage.getItem('auth_user');
-
-        if (!token || !userData) {
-          setIsAuthenticated(false);
-          router.replace('/sign-in');
-          return;
-        }
-
-        // Verificar que el token no esté vacío o sea inválido
-        if (token.trim() === '' || token === 'undefined' || token === 'null') {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          setIsAuthenticated(false);
-          router.replace('/sign-in');
-          return;
-        }
-
-        // Verificar que los datos del usuario sean válidos
-        const parsedUser = JSON.parse(userData);
-        if (!parsedUser.id || !parsedUser.email) {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          setIsAuthenticated(false);
-          router.replace('/sign-in');
-          return;
-        }
-
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error checking authentication:', error);
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
-        setIsAuthenticated(false);
-        router.replace('/sign-in');
-      }
-    };
-
-    checkAuth();
-  }, [isMounted, router]);
-
-  // Durante el SSR o mientras se está montando, mostrar el fallback
-  if (!isMounted || isAuthenticated === null) {
+  if (loading) {
     return fallback || (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
@@ -75,8 +22,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
     );
   }
 
-  // Si no está autenticado, mostrar loading mientras se redirige
-  if (!isAuthenticated) {
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">

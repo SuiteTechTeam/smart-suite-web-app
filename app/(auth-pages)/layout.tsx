@@ -1,12 +1,11 @@
-
 export default async function Layout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
 	return (
-		<main className="flex flex-col gap-12 items-center p-4 bg-backgroud min-h-screen pt-32">
-			<div className="max-w-7xl flex flex-col gap-12 items-center">
+		<main className="h-screen overflow-hidden flex items-center justify-center bg-background">
+			<div className="w-full h-full max-w-xl flex items-center justify-center">
 				{children}
 			</div>
 		</main>
