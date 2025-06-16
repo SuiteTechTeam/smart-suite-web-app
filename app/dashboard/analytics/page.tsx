@@ -21,10 +21,12 @@ import {
   Search,
   ChevronLeft
 } from "lucide-react"
+import { getAllRooms, Room } from "@/lib/services/rooms-service"
+import { getAllIoTDevices, getRoomDevicesByRoom, IoTDevice, RoomDevice } from "@/lib/services/iot-service"
 
 type RoomStatus = "occupied" | "vacant" | "maintenance"
 
-interface Room {
+interface AnalyticsRoom {
   id: number
   name: string
   floor: number
@@ -37,38 +39,14 @@ interface TemperatureData {
   temperatura: number
 }
 
-const roomsData: Room[] = [
-  {
-    id: 101,
-    name: "Habitación 101",
-    floor: 1,
-    status: "occupied",
-    devices: ["luz", "termostato", "cerradura", "wifi"],
-  },
-  { id: 102, name: "Habitación 102", floor: 1, status: "vacant", devices: ["luz", "termostato", "cerradura", "wifi"] },
-  {
-    id: 103,
-    name: "Habitación 103",
-    floor: 1,
-    status: "maintenance",
-    devices: ["luz", "termostato", "cerradura", "wifi"],
-  },
-  {
-    id: 201,
-    name: "Habitación 201",
-    floor: 2,
-    status: "occupied",
-    devices: ["luz", "termostato", "cerradura", "wifi"],
-  },
-  { id: 202, name: "Habitación 202", floor: 2, status: "vacant", devices: ["luz", "termostato", "cerradura", "wifi"] },
-  {
-    id: 203,
-    name: "Habitación 203",
-    floor: 2,
-    status: "occupied",
-    devices: ["luz", "termostato", "cerradura", "wifi"],
-  },
-]
+// Función para convertir Room de la API a AnalyticsRoom para la UI
+const convertRoomToAnalyticsRoom = (room: Room): AnalyticsRoom => ({
+  id: room.id,
+  name: room.room_number || `Habitación ${room.id}`,
+  floor: room.floor || Math.floor(room.id / 100) || 1,
+  status: room.state as RoomStatus,
+  devices: room.devices || ["luz", "termostato", "cerradura", "wifi"]
+});
 
 const generateTemperatureData = (roomId: number): TemperatureData[] => {
   const now = new Date()
@@ -104,7 +82,11 @@ const statusConfig = {
 }
 
 export default function HotelRoomDashboard() {
-  const [selectedRoom, setSelectedRoom] = useState<Room>(roomsData[0])
+  const [selectedRoom, setSelectedRoom] = useState<AnalyticsRoom | null>(null)
+  const [roomsData, setRoomsData] = useState<AnalyticsRoom[]>([])
+  const [iotDevices, setIotDevices] = useState<IoTDevice[]>([])
+  const [roomDevices, setRoomDevices] = useState<RoomDevice[]>([])
+  const [loading, setLoading] = useState(true)
   const [temperatureData, setTemperatureData] = useState<TemperatureData[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [deviceStates, setDeviceStates] = useState<{
@@ -119,19 +101,105 @@ export default function HotelRoomDashboard() {
     wifi: true,
   })
   const [search, setSearch] = useState("")
-
+  // Cargar datos de la API
   useEffect(() => {
-    setTemperatureData(generateTemperatureData(selectedRoom.id))
-  }, [selectedRoom])
+    const loadData = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          console.error('No auth token found');
+          setLoading(false);
+          return;
+        }
+          // Cargar habitaciones
+        const roomsResult = await getAllRooms(token);
+        if (roomsResult.success && roomsResult.data && roomsResult.data.length > 0) {
+          const analyticsRooms = roomsResult.data.map(convertRoomToAnalyticsRoom);
+          setRoomsData(analyticsRooms);
+          setSelectedRoom(analyticsRooms[0]);
+        } else {
+          console.error('Error loading rooms:', roomsResult.message || 'No se pudieron cargar las habitaciones');
+        }        // Cargar dispositivos IoT
+        const iotResult = await getAllIoTDevices(token);
+        if (iotResult.success && iotResult.data) {
+          setIotDevices(iotResult.data);
+        } else {
+          console.error('Error loading IoT devices:', iotResult.message || 'No se pudieron cargar los dispositivos IoT');
+        }
+        
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleRoomSelect = (room: Room) => {
+    loadData();
+  }, []);
+
+  // Cargar dispositivos de la habitación seleccionada
+  useEffect(() => {
+    if (selectedRoom) {
+      setTemperatureData(generateTemperatureData(selectedRoom.id));
+      loadRoomDevices(selectedRoom.id);
+    }
+  }, [selectedRoom]);
+
+  const loadRoomDevices = async (roomId: number) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      
+      const result = await getRoomDevicesByRoom(roomId, token);
+      if (result.success && result.data) {
+        setRoomDevices(result.data);
+        // Actualizar estados de dispositivos basado en datos reales
+        updateDeviceStatesFromIoT(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading room devices:', error);
+    }
+  };
+
+  const updateDeviceStatesFromIoT = (devices: RoomDevice[]) => {
+    // Mapear dispositivos IoT reales a estados de UI
+    const iotDeviceMap = new Map(iotDevices.map(device => [device.id, device]));
+    
+    const newStates = {
+      luz: false,
+      termostato: 22,
+      cerradura: true,
+      wifi: false,
+    };
+
+    devices.forEach(roomDevice => {
+      const iotDevice = iotDeviceMap.get(roomDevice.iot_device_id);
+      if (iotDevice) {
+        switch (iotDevice.device_type.toLowerCase()) {
+          case 'light':
+          case 'luz':
+            newStates.luz = iotDevice.status === 'active';
+            break;
+          case 'thermostat':
+          case 'termostato':
+            newStates.termostato = 22; // Valor por defecto, se podría obtener de la configuración
+            break;
+          case 'lock':
+          case 'cerradura':
+            newStates.cerradura = iotDevice.status === 'active';
+            break;
+          case 'wifi':
+            newStates.wifi = iotDevice.status === 'active';
+            break;
+        }
+      }
+    });
+
+    setDeviceStates(newStates);
+  };
+  const handleRoomSelect = (room: AnalyticsRoom) => {
     setSelectedRoom(room)
-    setDeviceStates({
-      luz: Math.random() > 0.5,
-      termostato: 20 + Math.floor(Math.random() * 5),
-      cerradura: Math.random() > 0.3,
-      wifi: Math.random() > 0.1,
-    })
+    // Los estados de dispositivos se actualizarán automáticamente en el useEffect de loadRoomDevices
     setSidebarOpen(false)
   }
 
@@ -146,6 +214,31 @@ export default function HotelRoomDashboard() {
     room.name.toLowerCase().includes(search.toLowerCase()) ||
     String(room.id).includes(search)
   )
+
+  // Mostrar loading mientras se cargan los datos
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Cargando habitaciones...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Mostrar mensaje si no hay habitaciones
+  if (!selectedRoom || roomsData.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Home className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">No hay habitaciones disponibles</h2>
+          <p className="text-muted-foreground">No se encontraron habitaciones en el sistema.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -460,10 +553,10 @@ function RoomSidebar({
 }: {
   search: string
   setSearch: (value: string) => void
-  filteredRooms: Room[]
-  selectedRoom: Room
-  handleRoomSelect: (room: Room) => void
-  getStatusBadge: (status: RoomStatus) => void
+  filteredRooms: AnalyticsRoom[]
+  selectedRoom: AnalyticsRoom
+  handleRoomSelect: (room: AnalyticsRoom) => void
+  getStatusBadge: (status: RoomStatus) => React.ReactNode
   setSidebarOpen: (open: boolean) => void
   isMobile: boolean
 }) {

@@ -102,8 +102,9 @@ export default function IoTDashboard() {
           setIotDevices(iotResult.data);
           if (iotResult.data.length > 0) {
             setSelectedDevice(iotResult.data[0]);
-          }        } else {
-          console.error('Error loading IoT devices:', iotResult.message || 'No se pudieron cargar los dispositivos IoT');
+          }
+        } else {
+          console.error('Error loading IoT devices:', iotResult.message);
         }
 
         // Cargar habitaciones
@@ -111,7 +112,7 @@ export default function IoTDashboard() {
         if (roomsResult.success && roomsResult.data) {
           setRooms(roomsResult.data);
         } else {
-          console.error('Error loading rooms:', roomsResult.message || 'No se pudieron cargar las habitaciones');
+          console.error('Error loading rooms:', roomsResult.message);
         }
         
       } catch (error) {

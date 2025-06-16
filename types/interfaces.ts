@@ -6,6 +6,24 @@ export interface Inventory {
   stock: number;
 }
 
+export interface Supply {
+  id: number;
+  providerId: number;
+  hotelId: number;
+  name: string;
+  price: number;
+  stock: number;
+  state: string;
+}
+
+export interface SupplyRequest {
+  id: number;
+  paymentOwnerId: number;
+  supplyId: number;
+  count: number;
+  amount: number;
+}
+
 export interface Room {
   id: number;
   customer_id: number;

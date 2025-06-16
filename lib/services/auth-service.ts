@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5000/api/v1";
+import { API_CONFIG, buildApiUrl } from "@/lib/config/api";
 
 export interface AuthenticatedUser {
   id: number;
@@ -14,7 +14,7 @@ export interface AuthResult {
 
 export async function signIn(email: string, password: string, roleId: number): Promise<AuthResult> {
   try {
-    const response = await fetch(`${BASE_URL}/Authentication/sign-in`, {
+    const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.AUTH.SIGN_IN), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, roleId })
@@ -37,15 +37,14 @@ export async function signIn(email: string, password: string, roleId: number): P
   }
 }
 
-export async function signUp(user: { name: string; surname: string; phone: string; email: string; password: string; roleId: number }): Promise<AuthResult> {
-  // roleId: 1=Owner, 2=Admin, 3=Guest
+export async function signUp(user: { name: string; surname: string; phone: string; email: string; password: string; roleId: number }): Promise<AuthResult> {  // roleId: 1=Owner, 2=Admin, 3=Guest
   let endpoint = "";
-  if (user.roleId === 1) endpoint = "sign-up-owner";
-  else if (user.roleId === 2) endpoint = "sign-up-admin";
-  else if (user.roleId === 3) endpoint = "sign-up-guest";
+  if (user.roleId === 1) endpoint = API_CONFIG.ENDPOINTS.AUTH.SIGN_UP_OWNER;
+  else if (user.roleId === 2) endpoint = API_CONFIG.ENDPOINTS.AUTH.SIGN_UP_ADMIN;
+  else if (user.roleId === 3) endpoint = API_CONFIG.ENDPOINTS.AUTH.SIGN_UP_GUEST;
   else return { success: false, message: "Rol inválido" };
   try {
-    const response = await fetch(`${BASE_URL}/Authentication/${endpoint}`, {
+    const response = await fetch(buildApiUrl(endpoint), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(user)
@@ -62,12 +61,12 @@ export async function signUp(user: { name: string; surname: string; phone: strin
 
 export async function getUserById(id: number, roleId: number, token: string): Promise<any> {
   let endpoint = "";
-  if (roleId === 1) endpoint = `owners/${id}`;
-  else if (roleId === 2) endpoint = `admins/${id}`;
-  else if (roleId === 3) endpoint = `guests/${id}`;
+  if (roleId === 1) endpoint = `${API_CONFIG.ENDPOINTS.USER.OWNERS}/${id}`;
+  else if (roleId === 2) endpoint = `${API_CONFIG.ENDPOINTS.USER.ADMINS}/${id}`;
+  else if (roleId === 3) endpoint = `${API_CONFIG.ENDPOINTS.USER.GUESTS}/${id}`;
   else return { success: false, message: "Rol inválido" };
   try {
-    const response = await fetch(`${BASE_URL}/User/${endpoint}`, {
+    const response = await fetch(buildApiUrl(endpoint), {
       headers: { "Authorization": `Bearer ${token}` }
     });
     if (!response.ok) {

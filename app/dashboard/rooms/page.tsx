@@ -31,11 +31,11 @@ import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-mobile"
 import { toast } from "sonner"
-import { createRoom, deleteRoom, getRooms, updateRoom } from "./service/room-service"
+import { getAllRooms, createRoom, updateRoomState, Room } from "@/lib/services/rooms-service"
 
 type RoomStatus = "occupied" | "vacant" | "maintenance"
 
-interface Room {
+interface RoomData {
   id: number
   name: string
   floor: number
@@ -69,21 +69,21 @@ const roomTypes = ["Individual", "Doble", "Suite", "Familiar"]
 const deviceOptions = ["luz", "termostato", "cerradura", "wifi", "minibar", "caja fuerte", "tv", "aire acondicionado"]
 
 export default function RoomsAdminPage() {
-  const [rooms, setRooms] = useState<Room[]>([])
-  const [filteredRooms, setFilteredRooms] = useState<Room[]>([])
+  const [rooms, setRooms] = useState<RoomData[]>([])
+  const [filteredRooms, setFilteredRooms] = useState<RoomData[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<RoomStatus | "all">("all")
   const [floorFilter, setFloorFilter] = useState<number | "all">("all")
   const [isLoading, setIsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [currentRoom, setCurrentRoom] = useState<Room | null>(null)
+  const [currentRoom, setCurrentRoom] = useState<RoomData | null>(null)
   const [isNewRoom, setIsNewRoom] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const isMobile = useMediaQuery("(max-width: 768px)")
   const router = useRouter()
 
   // Formulario para nueva/editar habitación
-  const [formData, setFormData] = useState<Omit<Room, "id">>({
+  const [formData, setFormData] = useState<Omit<RoomData, "id">>({
     name: "",
     floor: 1,
     status: "vacant",
@@ -101,16 +101,37 @@ export default function RoomsAdminPage() {
       setSidebarOpen(true)
     }
   }, [isMobile])
+  // Función para convertir Room de la API a RoomData para la UI
+  const convertRoomToRoomData = (room: Room): RoomData => ({
+    id: room.id,
+    name: room.room_number || `Habitación ${room.id}`,
+    floor: room.floor || Math.floor(room.id / 100) || 1,
+    status: room.state as RoomStatus,
+    type: room.type || "Individual",
+    capacity: room.capacity || 1,
+    price: room.price || 0,
+    devices: room.devices || ["luz", "termostato", "cerradura", "wifi"],
+    lastCleaned: new Date().toISOString().split("T")[0],
+    notes: "",
+  });
 
-  // Cargar habitaciones desde Supabase
+  // Cargar habitaciones desde la API
   useEffect(() => {
     const fetchRooms = async () => {
       setIsLoading(true);
       try {
-        const result = await getRooms();
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          toast.error("No hay token de autenticación");
+          setIsLoading(false);
+          return;
+        }
+
+        const result = await getAllRooms(token);
         if (result.success && result.data) {
-          setRooms(result.data);
-          setFilteredRooms(result.data);
+          const roomsData = result.data.map(convertRoomToRoomData);
+          setRooms(roomsData);
+          setFilteredRooms(roomsData);
         } else {
           toast.error(result.message || "Error al cargar las habitaciones");
         }
@@ -166,8 +187,7 @@ export default function RoomsAdminPage() {
     })
     setIsEditDialogOpen(true)
   }
-
-  const handleEditRoom = (room: Room) => {
+  const handleEditRoom = (room: RoomData) => {
     setIsNewRoom(false)
     setCurrentRoom(room)
     setFormData({
@@ -177,23 +197,18 @@ export default function RoomsAdminPage() {
       type: room.type,
       capacity: room.capacity,
       price: room.price,
-      devices: room.devices,
+      devices: room.devices || [],
       lastCleaned: room.lastCleaned || new Date().toISOString().split("T")[0],
       notes: room.notes || "",
     })
     setIsEditDialogOpen(true)
   }
-
   const handleDeleteRoom = async (id: number) => {
     if (window.confirm("¿Estás seguro de que deseas eliminar esta habitación?")) {
       try {
-        const result = await deleteRoom(id);
-        if (result.success) {
-          setRooms(rooms.filter((room) => room.id !== id))
-          toast.success("Habitación eliminada correctamente");
-        } else {
-          toast.error(result.message || "Error al eliminar la habitación");
-        }
+        // Nota: La función de eliminar no está implementada en la API aún
+        toast.error("La función de eliminar no está disponible temporalmente");
+        // Aquí iría: const result = await deleteRoom(id, token);
       } catch (error: any) {
         console.error("Error al eliminar habitación:", error.message);
         toast.error("Error al eliminar la habitación");
@@ -203,24 +218,36 @@ export default function RoomsAdminPage() {
 
   const handleSaveRoom = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        toast.error("No hay token de autenticación");
+        return;
+      }
+
       if (isNewRoom) {
-        // Crear nueva habitación
-        const result = await createRoom(formData);
+        // Convertir RoomData a Room para la API
+        const roomForApi: Omit<Room, 'id'> = {
+          room_number: formData.name,
+          type: formData.type,
+          capacity: formData.capacity,
+          price: formData.price,
+          state: formData.status,
+          floor: formData.floor,
+          devices: formData.devices,
+        };
+
+        const result = await createRoom(roomForApi, token);
         if (result.success && result.data) {
-          setRooms([...rooms, result.data]);
+          const newRoomData = convertRoomToRoomData(result.data);
+          setRooms([...rooms, newRoomData]);
           toast.success("Habitación creada correctamente");
         } else {
           toast.error(result.message || "Error al crear la habitación");
         }
       } else if (currentRoom) {
-        // Actualizar habitación existente
-        const result = await updateRoom(currentRoom.id, formData);
-        if (result.success && result.data) {
-          setRooms(rooms.map((room) => (room.id === currentRoom.id ? { ...room, ...formData } : room)));
-          toast.success("Habitación actualizada correctamente");
-        } else {
-          toast.error(result.message || "Error al actualizar la habitación");
-        }
+        // Nota: La función de actualizar no está completamente implementada
+        toast.error("La función de editar no está disponible temporalmente");
+        // Aquí iría la lógica de actualización usando updateRoomState
       }
 
       setIsEditDialogOpen(false);
@@ -230,17 +257,17 @@ export default function RoomsAdminPage() {
       toast.error("Error al guardar la habitación");
     }
   }
-
   const handleDeviceToggle = (device: string) => {
-    if (formData.devices.includes(device)) {
+    const currentDevices = formData.devices || [];
+    if (currentDevices.includes(device)) {
       setFormData({
         ...formData,
-        devices: formData.devices.filter((d) => d !== device),
+        devices: currentDevices.filter((d) => d !== device),
       })
     } else {
       setFormData({
         ...formData,
-        devices: [...formData.devices, device],
+        devices: [...currentDevices, device],
       })
     }
   }
@@ -251,10 +278,9 @@ export default function RoomsAdminPage() {
       {statusConfig[status].label}
     </div>
   )
-
   const getUniqueFloors = () => {
-    const floors = [...new Set(rooms.map((room) => room.floor))].sort((a, b) => a - b)
-    return floors
+    const floors = [...new Set(rooms.map((room) => room.floor))].filter(floor => floor !== undefined).sort((a, b) => (a || 0) - (b || 0))
+    return floors as number[]
   }
 
   return (

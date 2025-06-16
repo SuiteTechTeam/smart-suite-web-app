@@ -1,4 +1,14 @@
-"use server";
+// Este archivo ahora redirige al servicio centralizado de rooms
+// El servicio real está en lib/services/rooms-service.ts
+
+import { 
+  getAllRooms, 
+  createRoom as apiCreateRoom, 
+  updateRoomState, 
+  getRoomById, 
+  Room as ApiRoom 
+} from "@/lib/services/rooms-service";
+import { ServerActionResult } from "@/types/interfaces";
 
 export interface Room {
   id: number;
@@ -13,29 +23,55 @@ export interface Room {
   notes?: string;
 }
 
+// Función para convertir de ApiRoom a Room (para compatibilidad)
+const convertApiRoomToRoom = (apiRoom: ApiRoom): Room => ({
+  id: apiRoom.id,
+  name: apiRoom.room_number || `Habitación ${apiRoom.id}`,
+  floor: apiRoom.floor || 1,
+  status: apiRoom.state as "occupied" | "vacant" | "maintenance",
+  type: apiRoom.type || "Individual",
+  capacity: apiRoom.capacity || 1,
+  price: apiRoom.price || 0,
+  devices: apiRoom.devices || [],
+  last_cleaned: new Date().toISOString().split("T")[0],
+  notes: "",
+});
+
+// Función para convertir de Room a ApiRoom
+const convertRoomToApiRoom = (room: Omit<Room, 'id'>): Omit<ApiRoom, 'id'> => ({
+  room_number: room.name,
+  type: room.type,
+  capacity: room.capacity,
+  price: room.price,
+  state: room.status,
+  floor: room.floor,
+  devices: room.devices,
+});
+
 export const getRooms = async (): Promise<ServerActionResult> => {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('rooms')
-      .select('*')
-      .order('id', { ascending: true });
-    
-    if (error) {
-      throw error;
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      return {
+        success: false,
+        message: "No hay token de autenticación"
+      };
     }
-    
-    // Convertir los campos a la estructura esperada por el frontend
-    const mappedData = data.map(room => ({
-      ...room,
-      lastCleaned: room.last_cleaned,
-    }));
 
-    return {
-      success: true,
-      message: "Habitaciones obtenidas correctamente",
-      data: mappedData
-    };
+    const result = await getAllRooms(token);
+    if (result.success && result.data) {
+      const rooms = result.data.map(convertApiRoomToRoom);
+      return {
+        success: true,
+        message: "Habitaciones obtenidas correctamente",
+        data: rooms
+      };
+    } else {
+      return {
+        success: false,
+        message: result.message || "Error al obtener las habitaciones"
+      };
+    }
   } catch (error: any) {
     console.error("Error al obtener las habitaciones:", error.message);
     return {
@@ -47,37 +83,30 @@ export const getRooms = async (): Promise<ServerActionResult> => {
 
 export const createRoom = async (room: Omit<Room, 'id'>): Promise<ServerActionResult> => {
   try {
-    const supabase = await createClient();
-    
-    // Convertir los campos a la estructura de la base de datos
-    const roomData = {
-      name: room.name,
-      floor: room.floor,
-      status: room.status,
-      type: room.type,
-      capacity: room.capacity,
-      price: room.price,
-      devices: room.devices,
-      last_cleaned: room.last_cleaned,
-      notes: room.notes
-    };
-    
-    const { data, error } = await supabase
-      .from('rooms')
-      .insert([roomData])
-      .select();
-    
-    if (error) {
-      throw error;
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      return {
+        success: false,
+        message: "No hay token de autenticación"
+      };
     }
+
+    const apiRoom = convertRoomToApiRoom(room);
+    const result = await apiCreateRoom(apiRoom, token);
     
-    revalidatePath('/dashboard/rooms');
-    
-    return {
-      success: true,
-      message: "Habitación añadida correctamente",
-      data: data[0]
-    };
+    if (result.success && result.data) {
+      const newRoom = convertApiRoomToRoom(result.data);
+      return {
+        success: true,
+        message: "Habitación añadida correctamente",
+        data: newRoom
+      };
+    } else {
+      return {
+        success: false,
+        message: result.message || "Error al crear la habitación"
+      };
+    }
   } catch (error: any) {
     console.error("Error al crear habitación:", error.message);
     return {
@@ -89,38 +118,36 @@ export const createRoom = async (room: Omit<Room, 'id'>): Promise<ServerActionRe
 
 export const updateRoom = async (id: number, room: Partial<Room>): Promise<ServerActionResult> => {
   try {
-    const supabase = await createClient();
-    
-    // Convertir los campos a la estructura de la base de datos
-    const roomData: any = {};
-    
-    if (room.name !== undefined) roomData.name = room.name;
-    if (room.floor !== undefined) roomData.floor = room.floor;
-    if (room.status !== undefined) roomData.status = room.status;
-    if (room.type !== undefined) roomData.type = room.type;
-    if (room.capacity !== undefined) roomData.capacity = room.capacity;
-    if (room.price !== undefined) roomData.price = room.price;
-    if (room.devices !== undefined) roomData.devices = room.devices;
-    if (room.last_cleaned !== undefined) roomData.last_cleaned = room.last_cleaned;
-    if (room.notes !== undefined) roomData.notes = room.notes;
-    
-    const { data, error } = await supabase
-      .from('rooms')
-      .update(roomData)
-      .eq('id', id)
-      .select();
-    
-    if (error) {
-      throw error;
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      return {
+        success: false,
+        message: "No hay token de autenticación"
+      };
     }
-    
-    revalidatePath('/dashboard/rooms');
-    
-    return {
-      success: true,
-      message: "Habitación actualizada correctamente",
-      data: data[0]
-    };
+
+    // Por ahora solo podemos actualizar el estado usando updateRoomState
+    if (room.status) {
+      const result = await updateRoomState(id, room.status, token);
+      if (result.success && result.data) {
+        const updatedRoom = convertApiRoomToRoom(result.data);
+        return {
+          success: true,
+          message: "Estado de habitación actualizado correctamente",
+          data: updatedRoom
+        };
+      } else {
+        return {
+          success: false,
+          message: result.message || "Error al actualizar la habitación"
+        };
+      }
+    } else {
+      return {
+        success: false,
+        message: "Solo se puede actualizar el estado de la habitación por ahora"
+      };
+    }
   } catch (error: any) {
     console.error("Error al actualizar habitación:", error.message);
     return {
@@ -132,22 +159,10 @@ export const updateRoom = async (id: number, room: Partial<Room>): Promise<Serve
 
 export const deleteRoom = async (id: number): Promise<ServerActionResult> => {
   try {
-    const supabase = await createClient();
-    
-    const { error } = await supabase
-      .from('rooms')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      throw error;
-    }
-    
-    revalidatePath('/dashboard/rooms');
-    
+    // La función de eliminar no está implementada en la API aún
     return {
-      success: true,
-      message: "Habitación eliminada correctamente"
+      success: false,
+      message: "La función de eliminar habitaciones no está disponible temporalmente"
     };
   } catch (error: any) {
     console.error("Error al eliminar habitación:", error.message);
