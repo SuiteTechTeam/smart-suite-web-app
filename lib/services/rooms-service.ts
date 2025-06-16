@@ -22,13 +22,16 @@ function handleApiError(error: any, defaultMessage: string): ApiResult<any> {
   };
 }
 
+// Tipos de estados posibles para las habitaciones
+export type RoomState = "occupied" | "vacant" | "maintenance";
+
 export interface Room {
   id: number;
   room_number: string;
   type: string;
   capacity: number;
   price: number;
-  state: "occupied" | "vacant" | "maintenance";
+  state: RoomState;
   floor?: number;
   devices?: string[];
 }
@@ -39,11 +42,21 @@ export interface ApiResult<T> {
   message?: string;
 }
 
-export async function getAllRooms(token: string): Promise<ApiResult<Room[]>> {
+export async function getAllRooms(token: string, hotelId: number = 1): Promise<ApiResult<Room[]>> {
   try {
-    console.log('Fetching rooms with token:', token ? 'Token present' : 'No token'); // Debug log
+    if (!token) {
+      return {
+        success: false,
+        message: "No se proporcionó token de autenticación"
+      };
+    }
     
-    const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.ROOMS.GET_ALL), {
+    // Construir URL con el parámetro hotelId
+    const url = `${buildApiUrl(API_CONFIG.ENDPOINTS.ROOMS.GET_ALL)}?hotelId=${hotelId}`;
+    
+    console.log(`Fetching rooms for hotelId: ${hotelId}`);
+    
+    const response = await fetch(url, {
       method: "GET",
       headers: { 
         "Authorization": `Bearer ${token}`,
@@ -51,25 +64,42 @@ export async function getAllRooms(token: string): Promise<ApiResult<Room[]>> {
       }
     });
     
-    console.log('Rooms API response status:', response.status); // Debug log
-    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Rooms API error response:', errorText); // Debug log
+      console.error('Rooms API error response:', errorText); 
       return { 
         success: false, 
-        message: errorText || `Error HTTP ${response.status}: ${response.statusText}` 
+        message: "No se pudieron cargar las habitaciones" 
+      };
+    }
+      const data = await response.json();
+    
+    if (!data || !Array.isArray(data)) {
+      console.error('API returned invalid data format', data);
+      return {
+        success: false,
+        message: "Formato de datos inválido recibido del servidor"
       };
     }
     
-    const data = await response.json();
-    console.log('Rooms API success response:', data); // Debug log
-    return { success: true, data };
+    // Validar los datos de cada habitación y normalizar los estados
+    const validRooms = data.map(room => {
+      // Asegurarse de que el estado es uno de los valores permitidos
+      if (room && typeof room === 'object') {
+        if (!room.state || !['occupied', 'vacant', 'maintenance'].includes(room.state)) {
+          console.warn(`Estado no válido en habitación ${room.id || 'desconocida'}: "${room.state}", asignando "vacant" por defecto`);
+          room.state = 'vacant';
+        }
+      }
+      return room;
+    });
+    
+    return { success: true, data: validRooms };
   } catch (error: any) {
-    console.error('Rooms API catch error:', error); // Debug log
+    console.error('Error al cargar habitaciones:', error); 
     return { 
       success: false, 
-      message: error.message || 'Error desconocido al cargar las habitaciones' 
+      message: "No se pudieron cargar las habitaciones" 
     };
   }
 }

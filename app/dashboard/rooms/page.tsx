@@ -48,7 +48,17 @@ interface RoomData {
   notes?: string
 }
 
-const statusConfig = {
+// Definimos explícitamente la interfaz para el statusConfig
+interface StatusConfigType {
+  [key: string]: {
+    color: string;
+    label: string;
+    icon: React.ReactNode;
+  };
+}
+
+// Aseguramos que todos los estados posibles estén definidos
+const statusConfig: StatusConfigType = {
   occupied: {
     color: "bg-emerald-100 text-emerald-700 border-emerald-200",
     label: "Ocupada",
@@ -58,7 +68,8 @@ const statusConfig = {
     color: "bg-sky-100 text-sky-700 border-sky-200",
     label: "Libre",
     icon: <Badge variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0 mr-2" />,
-  },  maintenance: {
+  },
+  maintenance: {
     color: "bg-amber-100 text-amber-700 border-amber-200",
     label: "Mantenimiento",
     icon: <Badge variant="outline" className="bg-amber-500 border-0 h-2 w-2 p-0 mr-2" />,
@@ -100,51 +111,64 @@ export default function RoomsAdminPage() {
     } else {
       setSidebarOpen(true)
     }
-  }, [isMobile])
-  // Función para convertir Room de la API a RoomData para la UI
-  const convertRoomToRoomData = (room: Room): RoomData => ({
-    id: room.id,
-    name: room.room_number || `Habitación ${room.id}`,
-    floor: room.floor || Math.floor(room.id / 100) || 1,
-    status: room.state as RoomStatus,
-    type: room.type || "Individual",
-    capacity: room.capacity || 1,
-    price: room.price || 0,
-    devices: room.devices || ["luz", "termostato", "cerradura", "wifi"],
-    lastCleaned: new Date().toISOString().split("T")[0],
-    notes: "",
-  });
-
-  // Cargar habitaciones desde la API
+  }, [isMobile])  // Función para convertir Room de la API a RoomData para la UI
+  const convertRoomToRoomData = (room: Room): RoomData => {
+    // Asegurar que el estado sea uno de los valores válidos
+    let status: RoomStatus = "vacant"; // Valor por defecto
+    if (room.state && ["occupied", "vacant", "maintenance"].includes(room.state)) {
+      status = room.state as RoomStatus;
+    } else {
+      console.warn(`Estado no reconocido: ${room.state}, asignando 'vacant' por defecto`);
+    }
+    
+    return {
+      id: room.id,
+      name: room.room_number || `Habitación ${room.id}`,
+      floor: room.floor || Math.floor(room.id / 100) || 1,
+      status: status,
+      type: room.type || "Individual",
+      capacity: room.capacity || 1,
+      price: room.price || 0,
+      devices: room.devices || ["luz", "termostato", "cerradura", "wifi"],
+      lastCleaned: new Date().toISOString().split("T")[0],
+      notes: "",
+    };
+  };// Cargar habitaciones desde la API
   useEffect(() => {
     const fetchRooms = async () => {
       setIsLoading(true);
       try {
         const token = localStorage.getItem('auth_token');
         if (!token) {
-          toast.error("No hay token de autenticación");
+          toast.error("No hay sesión activa. Por favor, inicie sesión de nuevo.");
+          router.push('/sign-in');
           setIsLoading(false);
           return;
         }
+        
+        // Obtener el hotelId de localStorage o usar 1 por defecto
+        const hotelId = parseInt(localStorage.getItem('hotel_id') || '1');
+        console.log(`Cargando habitaciones para el hotel ID: ${hotelId}`);
 
-        const result = await getAllRooms(token);
+        const result = await getAllRooms(token, hotelId);
         if (result.success && result.data) {
           const roomsData = result.data.map(convertRoomToRoomData);
           setRooms(roomsData);
           setFilteredRooms(roomsData);
         } else {
-          toast.error(result.message || "Error al cargar las habitaciones");
+          console.error("Error loading rooms:", result.message);
+          toast.error(result.message || "No se pudieron cargar las habitaciones");
         }
       } catch (error: any) {
-        console.error("Error al cargar las habitaciones:", error.message);
-        toast.error("Error al cargar las habitaciones");
+        console.error("Error al cargar las habitaciones:", error);
+        toast.error("No se pudieron cargar las habitaciones");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchRooms();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     filterRooms()
@@ -271,13 +295,26 @@ export default function RoomsAdminPage() {
       })
     }
   }
-
-  const getStatusBadge = (status: RoomStatus) => (
-    <div className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig[status].color}`}>
-      {statusConfig[status].icon}
-      {statusConfig[status].label}
-    </div>
-  )
+  const getStatusBadge = (status: RoomStatus) => {
+    // Verificar que el estado exista en la configuración
+    const config = statusConfig[status];
+    if (!config) {
+      console.warn(`Estado no reconocido en getStatusBadge: ${status}, usando configuración de 'vacant'`);
+      return (
+        <div className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig["vacant"].color}`}>
+          {statusConfig["vacant"].icon}
+          {"Desconocido"}
+        </div>
+      );
+    }
+    
+    return (
+      <div className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+        {config.icon}
+        {config.label}
+      </div>
+    );
+  }
   const getUniqueFloors = () => {
     const floors = [...new Set(rooms.map((room) => room.floor))].filter(floor => floor !== undefined).sort((a, b) => (a || 0) - (b || 0))
     return floors as number[]

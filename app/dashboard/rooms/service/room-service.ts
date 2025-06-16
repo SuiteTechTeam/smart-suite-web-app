@@ -48,7 +48,7 @@ const convertRoomToApiRoom = (room: Omit<Room, 'id'>): Omit<ApiRoom, 'id'> => ({
   devices: room.devices,
 });
 
-export const getRooms = async (): Promise<ServerActionResult> => {
+export const getRooms = async (hotelId: number = 1): Promise<ServerActionResult> => {
   try {
     const token = localStorage.getItem('auth_token');
     if (!token) {
@@ -58,7 +58,7 @@ export const getRooms = async (): Promise<ServerActionResult> => {
       };
     }
 
-    const result = await getAllRooms(token);
+    const result = await getAllRooms(token, hotelId);
     if (result.success && result.data) {
       const rooms = result.data.map(convertApiRoomToRoom);
       return {
@@ -69,14 +69,14 @@ export const getRooms = async (): Promise<ServerActionResult> => {
     } else {
       return {
         success: false,
-        message: result.message || "Error al obtener las habitaciones"
+        message: result.message || "No se pudieron cargar las habitaciones"
       };
     }
   } catch (error: any) {
     console.error("Error al obtener las habitaciones:", error.message);
     return {
       success: false,
-      message: error.message || "Error al obtener las habitaciones"
+      message: "No se pudieron cargar las habitaciones"
     };
   }
 };

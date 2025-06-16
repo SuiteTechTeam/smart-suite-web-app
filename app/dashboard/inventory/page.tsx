@@ -16,14 +16,46 @@ import { toast } from "sonner";
 import { getAllSupplies, createSupply, updateSupply } from "@/lib/services/supply-service";
 import { getAllProviders } from "@/lib/services/providers-service";
 
+// Mapeo de estados a etiquetas legibles
+const stateLabels: Record<string, string> = {
+  "active": "Activo",
+  "inactive": "Inactivo",
+  "discontinued": "Descontinuado",
+  "pending": "Pendiente",
+  "out_of_stock": "Sin stock"
+};
+
 // Función para convertir Supply a formato compatible con la UI existente
-const convertSupplyToInventory = (supply: Supply) => ({
-  id: supply.id,
-  name: supply.name,
-  type: supply.state, // Usamos el estado como tipo por ahora
-  unit_price: supply.price,
-  stock: supply.stock
-});
+const convertSupplyToInventory = (supply: Supply) => {
+  if (!supply) {
+    console.warn("Supply undefined al convertir a formato de inventario");
+    return {
+      id: 0,
+      name: "Artículo desconocido",
+      type: "desconocido",
+      unit_price: 0,
+      stock: 0
+    };
+  }
+  
+  // Validar que los valores sean del tipo correcto
+  const id = supply.id || 0;
+  const name = supply.name || "Sin nombre";
+  // Asegurarse de que el estado sea reconocido
+  const state = supply.state && typeof supply.state === "string" ? supply.state : "active";
+  // Usar la etiqueta legible si existe, o el estado crudo si no
+  const type = stateLabels[state] || state;
+  const price = typeof supply.price === "number" ? supply.price : 0;
+  const stock = typeof supply.stock === "number" ? supply.stock : 0;
+  
+  return {
+    id,
+    name,
+    type,
+    unit_price: price,
+    stock
+  };
+};
 
 // Función para convertir datos de la UI a Supply
 const convertInventoryToSupply = (item: any, user: any = null): Omit<Supply, 'id'> => {
@@ -75,26 +107,62 @@ export default function InventoryPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-    // Obtener suministros del backend
+  // Obtener suministros del backend
   const fetchInventory = async () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
-        toast.error("No hay token de autenticación");
+        toast.error("No hay sesión activa. Por favor, inicie sesión de nuevo.");
         return;
       }
 
+      // Obtener el hotelId de localStorage o usar 1 por defecto
+      const hotelId = parseInt(localStorage.getItem('hotel_id') || '1');
+      console.log(`Cargando inventario para el hotel ID: ${hotelId}`);
+      
       const result = await getAllSupplies(token);
       if (result.success && result.data) {
-        // Convertir los datos de Supply al formato esperado por la UI
-        const convertedData = result.data.map(convertSupplyToInventory);
-        setInventory(convertedData);
+        try {
+          // Validar que result.data sea un array
+          if (!Array.isArray(result.data)) {
+            console.error("La API no devolvió un array para suministros:", result.data);
+            toast.error("Formato de datos inválido recibido del servidor");
+            setInventory([]);
+            return;
+          }
+          
+          // Convertir los datos de Supply al formato esperado por la UI
+          const convertedData = result.data.map(item => {
+            try {
+              return convertSupplyToInventory(item);
+            } catch (err) {
+              console.error("Error al convertir elemento de inventario:", err, item);
+              // Devolver un elemento con valores predeterminados si hay error
+              return {
+                id: item?.id || 0,
+                name: item?.name || "Error en el artículo",
+                type: "error",
+                unit_price: 0,
+                stock: 0
+              };
+            }
+          });
+          
+          setInventory(convertedData);
+        } catch (err) {
+          console.error("Error al procesar datos de inventario:", err);
+          toast.error("Error al procesar los datos del inventario");
+          setInventory([]);
+        }
       } else {
         toast.error(result.message || "No se pudo obtener el inventario");
+        setInventory([]);
       }
     } catch (error: any) {
-      toast.error("Error al cargar el inventario: " + error.message);
+      console.error("Error al cargar el inventario:", error);
+      toast.error("Error al cargar el inventario");
+      setInventory([]);
     } finally {
       setIsLoading(false);
     }
