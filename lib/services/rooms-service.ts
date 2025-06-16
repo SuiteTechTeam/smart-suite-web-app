@@ -41,6 +41,8 @@ export interface ApiResult<T> {
 
 export async function getAllRooms(token: string): Promise<ApiResult<Room[]>> {
   try {
+    console.log('Fetching rooms with token:', token ? 'Token present' : 'No token'); // Debug log
+    
     const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.ROOMS.GET_ALL), {
       method: "GET",
       headers: { 
@@ -49,9 +51,26 @@ export async function getAllRooms(token: string): Promise<ApiResult<Room[]>> {
       }
     });
     
-    return await handleApiResponse<Room[]>(response);
+    console.log('Rooms API response status:', response.status); // Debug log
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Rooms API error response:', errorText); // Debug log
+      return { 
+        success: false, 
+        message: errorText || `Error HTTP ${response.status}: ${response.statusText}` 
+      };
+    }
+    
+    const data = await response.json();
+    console.log('Rooms API success response:', data); // Debug log
+    return { success: true, data };
   } catch (error: any) {
-    return handleApiError(error, 'Error desconocido al cargar las habitaciones');
+    console.error('Rooms API catch error:', error); // Debug log
+    return { 
+      success: false, 
+      message: error.message || 'Error desconocido al cargar las habitaciones' 
+    };
   }
 }
 

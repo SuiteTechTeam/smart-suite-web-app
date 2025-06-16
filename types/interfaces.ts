@@ -24,6 +24,16 @@ export interface SupplyRequest {
   amount: number;
 }
 
+export interface Provider {
+  id: number;
+  name: string;
+  contact_name?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  state?: string;
+}
+
 export interface Room {
   id: number;
   customer_id: number;

@@ -15,13 +15,19 @@ export const API_CONFIG = {
       ADMINS: "/user/admins",
       GUESTS: "/user/guests",
     },
-    INVENTORY: "/inventory",
-    SUPPLY: {
+    INVENTORY: "/inventory",    SUPPLY: {
       CREATE: "/supply/create-supply",
       UPDATE: "/supply/{id}",
       GET_BY_ID: "/supply/{id}",
       GET_ALL: "/supply/get-all-supplies",
       GET_BY_PROVIDER: "/supply/provider/{providerId}",
+    },
+    PROVIDERS: {
+      CREATE: "/providers",
+      GET_ALL: "/providers",
+      GET_BY_ID: "/providers/{providerId}",
+      UPDATE: "/providers/{providerId}",
+      DELETE: "/providers/{providerId}",
     },
     SUPPLY_REQUEST: {
       CREATE: "/supply-request",

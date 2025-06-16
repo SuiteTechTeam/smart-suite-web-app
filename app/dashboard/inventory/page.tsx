@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Supply } from "@/types/interfaces";
+import { Supply, Provider } from "@/types/interfaces";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, PlusCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { StatsPanel } from "./components/StatsPanel";
 import { ItemFormDialog } from "./dialogs/ItemFormDialog";
 import { toast } from "sonner";
 import { getAllSupplies, createSupply, updateSupply } from "@/lib/services/supply-service";
+import { getAllProviders } from "@/lib/services/providers-service";
 
 // Función para convertir Supply a formato compatible con la UI existente
 const convertSupplyToInventory = (supply: Supply) => ({
@@ -25,18 +26,39 @@ const convertSupplyToInventory = (supply: Supply) => ({
 });
 
 // Función para convertir datos de la UI a Supply
-const convertInventoryToSupply = (item: any, hotelId: number = 1, providerId: number = 1): Omit<Supply, 'id'> => ({
-  providerId,
-  hotelId,
-  name: item.name,
-  price: item.unit_price || item.price || 0,
-  stock: item.stock || 0,
-  state: item.type || 'active'
-});
+const convertInventoryToSupply = (item: any, user: any = null): Omit<Supply, 'id'> => {
+  // Simplificar y usar valores que probablemente funcionen
+  const supplyData = {
+    providerId: Number(item.providerId || 1), // Ahora viene del formulario
+    hotelId: 1,    // Valor fijo simple
+    name: String(item.name || '').trim(),
+    price: Number(item.unit_price || item.price || 0),
+    stock: Number(item.stock || 0),
+    state: String(item.state || "active") // Ahora viene del formulario
+  };
+  
+  // Validar que todos los campos requeridos estén presentes
+  if (!supplyData.name) {
+    throw new Error('El nombre es requerido');
+  }
+  
+  console.log('Converting to supply data:', supplyData); // Debug log
+  return supplyData;
+};
+
+// Estados disponibles para los suministros
+const SUPPLY_STATES = [
+  { value: "active", label: "Activo" },
+  { value: "inactive", label: "Inactivo" },
+  { value: "discontinued", label: "Descontinuado" },
+  { value: "pending", label: "Pendiente" },
+  { value: "out_of_stock", label: "Sin stock" }
+];
 
 export default function InventoryPage() {
   const { user } = useAuth();
   const [inventory, setInventory] = useState<any[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("");
@@ -45,14 +67,15 @@ export default function InventoryPage() {
     name: "",
     type: "",
     unit_price: 0,
-    stock: 0
+    stock: 0,
+    providerId: "",
+    state: "active"
   });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Obtener suministros del backend
+    // Obtener suministros del backend
   const fetchInventory = async () => {
     setIsLoading(true);
     try {
@@ -77,8 +100,33 @@ export default function InventoryPage() {
     }
   };
 
+  // Obtener proveedores del backend
+  const fetchProviders = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        return;
+      }
+
+      const result = await getAllProviders(token);
+      if (result.success && result.data) {
+        setProviders(result.data);
+      } else {
+        console.error("Error al cargar proveedores:", result.message);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar proveedores:", error.message);
+    }
+  };
   useEffect(() => {
-    fetchInventory();
+    const loadData = async () => {
+      await Promise.all([
+        fetchInventory(),
+        fetchProviders()
+      ]);
+    };
+    
+    loadData();
   }, []);
   
   // Extraer todos los tipos únicos para el filtro
@@ -102,10 +150,13 @@ export default function InventoryPage() {
         
       return matchesSearch && matchesType && matchesStock;
     });
-  }, [inventory, searchTerm, filterType, filterStock]);
-  // Añadir nuevo elemento al inventario
+  }, [inventory, searchTerm, filterType, filterStock]);  // Añadir nuevo elemento al inventario
   const handleAddItem = async () => {
     if (!newItem.name || (!newItem.type || (newItem.type === "otro" && !newItem.customType))) return;
+    if (!newItem.providerId) {
+      toast.error("Debe seleccionar un proveedor");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -113,23 +164,45 @@ export default function InventoryPage() {
       if (!token) {
         toast.error("No hay token de autenticación");
         return;
+      }      const finalType = newItem.type === "otro" ? newItem.customType : newItem.type;
+      
+      let supplyData;
+      try {
+        supplyData = convertInventoryToSupply({
+          ...newItem,
+          type: finalType
+        }, user);
+      } catch (conversionError: any) {
+        toast.error(conversionError.message);
+        return;
       }
-
-      const finalType = newItem.type === "otro" ? newItem.customType : newItem.type;
-      const supplyData = convertInventoryToSupply({
-        ...newItem,
-        type: finalType
-      });
+      
+      // Validar que los datos requeridos estén presentes
+      if (!supplyData.name) {
+        toast.error("El nombre es requerido");
+        return;
+      }
+      if (supplyData.price < 0) {
+        toast.error("El precio no puede ser negativo");
+        return;
+      }
+      if (supplyData.stock < 0) {
+        toast.error("El stock no puede ser negativo");
+        return;
+      }
+      
+      console.log('Sending supply data to API:', supplyData); // Debug log
       
       const result = await createSupply(supplyData, token);
       
       if (result.success) {
-        await fetchInventory();
-        setNewItem({
+        await fetchInventory();        setNewItem({
           name: "",
           type: "",
           unit_price: 0,
-          stock: 0
+          stock: 0,
+          providerId: "",
+          state: "active"
         });
         setIsAddDialogOpen(false);
         toast.success("El elemento ha sido añadido correctamente");
@@ -305,8 +378,7 @@ export default function InventoryPage() {
           />
         </TabsContent>
       </Tabs>
-      
-      {/* Diálogo para añadir item */}
+        {/* Diálogo para añadir item */}
       <ItemFormDialog
         title="Añadir Nuevo Item"
         description="Ingresa los detalles del nuevo producto para el inventario"
@@ -317,6 +389,8 @@ export default function InventoryPage() {
         onSubmit={handleAddItem}
         isSubmitting={isSubmitting}
         availableTypes={itemTypes}
+        providers={providers}
+        supplyStates={SUPPLY_STATES}
       />
       
       {/* Diálogo para editar item */}
@@ -332,6 +406,8 @@ export default function InventoryPage() {
           isSubmitting={isSubmitting}
           buttonText="Guardar Cambios"
           availableTypes={itemTypes}
+          providers={providers}
+          supplyStates={SUPPLY_STATES}
         />
       )}
     </div>

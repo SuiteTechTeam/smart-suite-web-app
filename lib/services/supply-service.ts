@@ -111,6 +111,9 @@ export async function getSuppliesByProvider(providerId: number, token: string): 
 
 export async function createSupply(supply: Omit<Supply, 'id'>, token: string): Promise<ApiResult<Supply>> {
   try {
+    console.log('Creating supply with data:', supply); // Debug log
+    console.log('API endpoint:', buildApiUrl(API_CONFIG.ENDPOINTS.SUPPLY.CREATE)); // Debug log
+    
     const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.SUPPLY.CREATE), {
       method: "POST",
       headers: { 
@@ -120,15 +123,29 @@ export async function createSupply(supply: Omit<Supply, 'id'>, token: string): P
       body: JSON.stringify(supply)
     });
     
+    console.log('Create supply response status:', response.status); // Debug log
+    console.log('Create supply response headers:', Object.fromEntries(response.headers.entries())); // Debug log
+    
     if (!response.ok) {
       const errorText = await response.text();
-      return { success: false, message: errorText };
+      console.error('Create supply error response:', errorText); // Debug log
+      
+      // Intentar parsear el error como JSON para obtener más detalles
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error('Create supply error JSON:', errorJson); // Debug log
+        return { success: false, message: errorJson.message || errorJson.error || errorText };
+      } catch {
+        return { success: false, message: errorText || `Error HTTP ${response.status}: ${response.statusText}` };
+      }
     }
     
     const data = await response.json();
+    console.log('Create supply success response:', data); // Debug log
     return { success: true, data };
   } catch (error: any) {
-    return { success: false, message: error.message };
+    console.error('Create supply catch error:', error); // Debug log
+    return { success: false, message: error.message || 'Error desconocido al crear el suministro' };
   }
 }
 
