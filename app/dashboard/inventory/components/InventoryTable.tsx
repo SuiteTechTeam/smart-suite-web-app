@@ -69,7 +69,7 @@ export const InventoryTable = ({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    ${typeof item.unit_price === 'number' ? item.unit_price.toFixed(2) : "0.00"}
+                    S/.{typeof item.unit_price === 'number' ? item.unit_price.toFixed(2) : "0.00"}
                   </TableCell>
                   <TableCell className="text-right">
                     <Badge className={
@@ -83,7 +83,7 @@ export const InventoryTable = ({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    ${typeof item.unit_price === 'number' && typeof item.stock === 'number' 
+                    S/.{typeof item.unit_price === 'number' && typeof item.stock === 'number' 
                       ? (item.unit_price * item.stock).toFixed(2) 
                       : "0.00"}
                   </TableCell>
@@ -135,7 +135,7 @@ export const InventoryTable = ({
           Productos totales: <strong>{inventory.length}</strong>
         </p>
         <p className="text-sm text-muted-foreground">
-          Valor total: <strong>${totalValue.toFixed(2)}</strong>
+          Valor total: <strong>S/.{totalValue.toFixed(2)}</strong>
         </p>
       </CardFooter>
     </Card>
