@@ -14,7 +14,7 @@ export interface Room {
   id: number;
   name: string;
   floor: number;
-  status: "occupied" | "vacant" | "maintenance";
+  status: "occupied" | "available" | "maintenance";
   type: string;
   capacity: number;
   price: number;
@@ -28,7 +28,7 @@ const convertApiRoomToRoom = (apiRoom: ApiRoom): Room => ({
   id: apiRoom.id,
   name: apiRoom.room_number || `Habitación ${apiRoom.id}`,
   floor: apiRoom.floor || 1,
-  status: apiRoom.state as "occupied" | "vacant" | "maintenance",
+  status: apiRoom.state as "occupied" | "available" | "maintenance",
   type: apiRoom.type || "Individual",
   capacity: apiRoom.capacity || 1,
   price: apiRoom.price || 0,
