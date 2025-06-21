@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
 
-interface StatCardProps {
+export interface StatCardProps {
   title: string;
   value: string | number;
   description?: string;
@@ -53,3 +53,5 @@ export const StatCard = ({
     </Card>
   );
 };
+
+export default StatCard;

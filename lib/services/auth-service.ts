@@ -12,12 +12,12 @@ export interface AuthResult {
   message?: string;
 }
 
-export async function signIn(email: string, password: string, roleId: number): Promise<AuthResult> {
+export async function signIn(email: string, password: string, roleId: number | string): Promise<AuthResult> {
   try {
     const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.AUTH.SIGN_IN), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, roleId })
+      body: JSON.stringify({ email, password, roleId: Number(roleId) })
     });
     if (!response.ok) {
       const errorText = await response.text();

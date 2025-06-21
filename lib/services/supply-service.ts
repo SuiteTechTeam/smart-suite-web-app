@@ -9,8 +9,11 @@ function normalizeData<T>(data: any): T {
   
   // Si es un suministro, validar los campos
   if (data.hasOwnProperty('state') && typeof data.state === 'string') {
+    const lowerCaseState = data.state.toLowerCase();
     // Normalizar el estado si no es válido
-    if (!VALID_SUPPLY_STATES.includes(data.state)) {
+    if (VALID_SUPPLY_STATES.includes(lowerCaseState)) {
+      data.state = lowerCaseState; // Normalizar a minúsculas si es válido
+    } else {
       console.warn(`Estado de suministro inválido: "${data.state}", cambiando a "active"`);
       data.state = "active";
     }

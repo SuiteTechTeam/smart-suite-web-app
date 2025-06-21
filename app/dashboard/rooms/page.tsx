@@ -33,8 +33,9 @@ import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-mobile"
 import { toast } from "sonner"
 import { getAllRooms, createRoom, updateRoomState, updateRoom, Room } from "@/lib/services/rooms-service"
+import { getTypeRoomsByHotel, TypeRoom } from "@/lib/services/typeroom-service"
 
-type RoomStatus = "occupied" | "vacant" | "maintenance"
+type RoomStatus = "occupied" | "available" | "maintenance"
 
 interface RoomData {
   id: number
@@ -65,9 +66,9 @@ const statusConfig: StatusConfigType = {
     label: "Ocupada",
     icon: <Badge variant="outline" className="bg-emerald-500 border-0 h-2 w-2 p-0 mr-2" />,
   },
-  vacant: {
+  available: {
     color: "bg-sky-100 text-sky-700 border-sky-200",
-    label: "Libre",
+    label: "Disponible",
     icon: <Badge variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0 mr-2" />,
   },
   maintenance: {
@@ -82,6 +83,7 @@ const deviceOptions = ["luz", "termostato", "cerradura", "wifi", "minibar", "caj
 
 export default function RoomsAdminPage() {
   const [rooms, setRooms] = useState<RoomData[]>([])
+  const [typeRooms, setTypeRooms] = useState<TypeRoom[]>([])
   const [filteredRooms, setFilteredRooms] = useState<RoomData[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<RoomStatus | "all">("all")
@@ -94,11 +96,16 @@ export default function RoomsAdminPage() {
   const isMobile = useMediaQuery("(max-width: 768px)")
   const router = useRouter()
 
+  const [newRoomData, setNewRoomData] = useState({
+    typeRoomId: 0,
+    state: "available" as RoomStatus,
+  })
+
   // Formulario para nueva/editar habitación
   const [formData, setFormData] = useState<Omit<RoomData, "id">>({
     name: "",
     floor: 1,
-    status: "vacant",
+    status: "available",
     type: "Individual",
     capacity: 1,
     price: 0,
@@ -106,20 +113,23 @@ export default function RoomsAdminPage() {
     lastCleaned: new Date().toISOString().split("T")[0],
     notes: "",
   })
+
   useEffect(() => {
     if (isMobile) {
       setSidebarOpen(false)
     } else {
       setSidebarOpen(true)
     }
-  }, [isMobile])  // Función para convertir Room de la API a RoomData para la UI
+  }, [isMobile])
+
+  // Función para convertir Room de la API a RoomData para la UI
   const convertRoomToRoomData = (room: Room): RoomData => {
     // Asegurar que el estado sea uno de los valores válidos
-    let status: RoomStatus = "vacant"; // Valor por defecto
-    if (room.state && ["occupied", "vacant", "maintenance"].includes(room.state)) {
+    let status: RoomStatus = "available"; // Valor por defecto
+    if (room.state && ["occupied", "available", "maintenance"].includes(room.state)) {
       status = room.state as RoomStatus;
     } else {
-      console.warn(`Estado no reconocido: ${room.state}, asignando 'vacant' por defecto`);
+      console.warn(`Estado no reconocido: ${room.state}, asignando 'available' por defecto`);
     }
     
     return {
@@ -134,41 +144,46 @@ export default function RoomsAdminPage() {
       lastCleaned: new Date().toISOString().split("T")[0],
       notes: "",
     };
-  };// Cargar habitaciones desde la API
+  };
+
+  // Cargar habitaciones desde la API
   useEffect(() => {
-    const fetchRooms = async () => {
+    const fetchInitialData = async () => {
       setIsLoading(true);
       try {
         const token = localStorage.getItem('auth_token');
         if (!token) {
           toast.error("No hay sesión activa. Por favor, inicie sesión de nuevo.");
           router.push('/sign-in');
-          setIsLoading(false);
           return;
         }
         
-        // Obtener el hotelId de localStorage o usar 1 por defecto
-        const hotelId = parseInt(localStorage.getItem('hotel_id') || '1');
-        console.log(`Cargando habitaciones para el hotel ID: ${hotelId}`);
+        const hotelId = parseInt(localStorage.getItem('selected_hotel_id') || '1');
 
-        const result = await getAllRooms(token, hotelId);
-        if (result.success && result.data) {
-          const roomsData = result.data.map(convertRoomToRoomData);
+        const roomsResult = await getAllRooms(token, hotelId);
+        if (roomsResult.success && roomsResult.data) {
+          const roomsData = roomsResult.data.map(convertRoomToRoomData);
           setRooms(roomsData);
           setFilteredRooms(roomsData);
         } else {
-          console.error("Error loading rooms:", result.message);
-          toast.error(result.message || "No se pudieron cargar las habitaciones");
+          toast.error(roomsResult.message || "No se pudieron cargar las habitaciones");
         }
+
+        const typeRoomsResult = await getTypeRoomsByHotel(hotelId, token);
+        if (typeRoomsResult.success && typeRoomsResult.data) {
+          setTypeRooms(typeRoomsResult.data);
+        } else {
+          toast.error(typeRoomsResult.message || "No se pudieron cargar los tipos de habitación.");
+        }
+
       } catch (error: any) {
-        console.error("Error al cargar las habitaciones:", error);
-        toast.error("No se pudieron cargar las habitaciones");
+        toast.error("Error al cargar los datos iniciales: " + error.message);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchRooms();
+    fetchInitialData();
   }, [router]);
 
   useEffect(() => {
@@ -197,21 +212,22 @@ export default function RoomsAdminPage() {
 
     setFilteredRooms(filtered)
   }
+
   const handleCreateRoom = () => {
+    if (typeRooms.length === 0) {
+      toast.error("No hay tipos de habitación definidos.", {
+        description: "Por favor, vaya a 'Gestión del Hotel' para añadir al menos un tipo de habitación.",
+      });
+      return;
+    }
     setIsNewRoom(true)
-    setFormData({
-      name: `Habitación ${Math.floor(Math.random() * 900) + 100}`,
-      floor: 1,
-      status: "vacant",
-      type: "Individual",
-      capacity: 1,
-      price: 85,
-      devices: ["luz", "termostato", "cerradura", "wifi"],
-      lastCleaned: new Date().toISOString().split("T")[0],
-      notes: "",
+    setNewRoomData({
+      typeRoomId: typeRooms[0]?.id || 0,
+      state: "available",
     })
     setIsEditDialogOpen(true)
   }
+
   const handleEditRoom = (room: RoomData) => {
     setIsNewRoom(false)
     setCurrentRoom(room)
@@ -228,6 +244,7 @@ export default function RoomsAdminPage() {
     })
     setIsEditDialogOpen(true)
   }
+
   const handleDeleteRoom = async (id: number) => {
     if (window.confirm("¿Estás seguro de que deseas eliminar esta habitación?")) {
       try {
@@ -240,99 +257,61 @@ export default function RoomsAdminPage() {
       }
     }
   }
+
   const handleSaveRoom = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        toast.error("No hay token de autenticación");
+    const token = localStorage.getItem('auth_token');
+    const hotelId = localStorage.getItem('selected_hotel_id');
+
+    if (!token || !hotelId) {
+      toast.error("Error de configuración. No se encontró token o ID del hotel.");
+      return;
+    }
+
+    if (isNewRoom) {
+      // Lógica para CREAR una nueva habitación
+      if (!newRoomData.typeRoomId) {
+        toast.error("Debe seleccionar un tipo de habitación.");
         return;
       }
 
-      if (isNewRoom) {
-        // Convertir RoomData a Room para la API
-        const roomForApi: Omit<Room, 'id'> = {
-          room_number: formData.name,
-          type: formData.type,
-          capacity: formData.capacity,
-          price: formData.price,
-          state: formData.status,
-          floor: formData.floor,
-          devices: formData.devices,
-        };
+      try {
+        const result = await createRoom({
+          ...newRoomData,
+          hotelId: parseInt(hotelId),
+        }, token);
 
-        const result = await createRoom(roomForApi, token);
         if (result.success && result.data) {
-          const newRoomData = convertRoomToRoomData(result.data);
-          setRooms([...rooms, newRoomData]);
-          toast.success("Habitación creada correctamente");
+          toast.success("Habitación creada con éxito.");
+          const newRoom = convertRoomToRoomData(result.data);
+          setRooms(prev => [...prev, newRoom]);
+          setIsEditDialogOpen(false);
         } else {
-          toast.error(result.message || "Error al crear la habitación");
+          toast.error(result.message || "No se pudo crear la habitación.");
         }
-      } else if (currentRoom) {
-        // Editar habitación existente
-        const roomUpdates: Partial<Room> = {
-          room_number: formData.name,
-          type: formData.type,
-          capacity: formData.capacity,
-          price: formData.price,
-          state: formData.status,
-          floor: formData.floor,
-          devices: formData.devices,
-        };
-
-        const result = await updateRoom(currentRoom.id, roomUpdates, token);
-        if (result.success) {
-          // Actualizar la habitación en el estado local
-          const updatedRooms = rooms.map(room => 
-            room.id === currentRoom.id 
-              ? { ...room, 
-                  name: formData.name,
-                  type: formData.type,
-                  capacity: formData.capacity,
-                  price: formData.price,
-                  status: formData.status,
-                  floor: formData.floor,
-                  devices: formData.devices,
-                  notes: formData.notes,
-                  lastCleaned: formData.lastCleaned
-                }
-              : room
-          );
-          setRooms(updatedRooms);
-          toast.success("Habitación actualizada correctamente");
-        } else {
-          // Si la actualización completa no está disponible, intentar solo actualizar el estado
-          if (result.message?.includes("función de actualización completa no está disponible")) {
-            if (formData.status !== currentRoom.status) {
-              const stateResult = await updateRoomState(currentRoom.id, formData.status, token);
-              if (stateResult.success) {
-                const updatedRooms = rooms.map(room => 
-                  room.id === currentRoom.id 
-                    ? { ...room, status: formData.status }
-                    : room
-                );
-                setRooms(updatedRooms);
-                toast.success("Estado de la habitación actualizado correctamente");
-                toast.info("Nota: Solo se pudo actualizar el estado. Otras modificaciones requieren soporte adicional de la API.");
-              } else {
-                toast.error(stateResult.message || "Error al actualizar el estado de la habitación");
-              }
-            } else {
-              toast.warning("No se pueden guardar los cambios. La API solo permite actualizar el estado de la habitación.");
-            }
-          } else {
-            toast.error(result.message || "Error al actualizar la habitación");
-          }
-        }
+      } catch (error: any) {
+        toast.error(error.message || "Ocurrió un error al crear la habitación.");
       }
 
-      setIsEditDialogOpen(false);
-      setCurrentRoom(null);
-    } catch (error: any) {
-      console.error("Error al guardar habitación:", error.message);
-      toast.error("Error al guardar la habitación");
+    } else {
+      // Lógica para ACTUALIZAR una habitación existente
+      if (!currentRoom) return;
+      try {
+        // Solo actualizamos el estado por ahora
+        const result = await updateRoomState(currentRoom.id, formData.status, token);
+        if (result.success && result.data) {
+          toast.success("Habitación actualizada.");
+          const updatedRoom = convertRoomToRoomData(result.data);
+          setRooms(prev => prev.map(r => r.id === updatedRoom.id ? updatedRoom : r));
+          setIsEditDialogOpen(false);
+        } else {
+          toast.error(result.message || "No se pudo actualizar la habitación.");
+        }
+      } catch (error: any) {
+        toast.error(error.message || "Ocurrió un error al actualizar.");
+      }
     }
-  }
+  };
+
   const handleDeviceToggle = (device: string) => {
     const currentDevices = formData.devices || [];
     if (currentDevices.includes(device)) {
@@ -347,14 +326,15 @@ export default function RoomsAdminPage() {
       })
     }
   }
+
   const getStatusBadge = (status: RoomStatus) => {
     // Verificar que el estado exista en la configuración
     const config = statusConfig[status];
     if (!config) {
-      console.warn(`Estado no reconocido en getStatusBadge: ${status}, usando configuración de 'vacant'`);
+      console.warn(`Estado no reconocido en getStatusBadge: ${status}, usando configuración de 'available'`);
       return (
-        <div className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig["vacant"].color}`}>
-          {statusConfig["vacant"].icon}
+        <div className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig["available"].color}`}>
+          {statusConfig["available"].icon}
           {"Desconocido"}
         </div>
       );
@@ -367,6 +347,7 @@ export default function RoomsAdminPage() {
       </div>
     );
   }
+
   const getUniqueFloors = () => {
     const floors = [...new Set(rooms.map((room) => room.floor))].filter(floor => floor !== undefined).sort((a, b) => (a || 0) - (b || 0))
     return floors as number[]
@@ -447,7 +428,7 @@ export default function RoomsAdminPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="vacant">Libre</SelectItem>
+                      <SelectItem value="available">Disponible</SelectItem>
                       <SelectItem value="occupied">Ocupada</SelectItem>
                       <SelectItem value="maintenance">Mantenimiento</SelectItem>
                     </SelectContent>
@@ -524,11 +505,11 @@ export default function RoomsAdminPage() {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
                                 <DropdownMenuItem 
-                                  onClick={() => handleQuickStatusChange(room.id, "vacant")}
-                                  disabled={room.status === "vacant"}
+                                  onClick={() => handleQuickStatusChange(room.id, "available")}
+                                  disabled={room.status === "available"}
                                 >
                                   <Badge variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0 mr-2" />
-                                  Libre
+                                  Disponible
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
                                   onClick={() => handleQuickStatusChange(room.id, "occupied")}
@@ -577,7 +558,7 @@ export default function RoomsAdminPage() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Badge variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0" />
-                  <span>Libres: {rooms.filter((r) => r.status === "vacant").length}</span>
+                  <span>Disponibles: {rooms.filter((r) => r.status === "available").length}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Badge variant="outline" className="bg-amber-500 border-0 h-2 w-2 p-0" />
@@ -593,133 +574,177 @@ export default function RoomsAdminPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>{isNewRoom ? "Crear nueva habitación" : "Editar habitación"}</DialogTitle>
+            <DialogTitle>{isNewRoom ? "Añadir Nueva Habitación" : "Editar Habitación"}</DialogTitle>
             <DialogDescription>
               {isNewRoom
-                ? "Completa los detalles para crear una nueva habitación."
-                : `Modificando la habitación ${currentRoom?.id}.`}
+                ? "Seleccione el tipo y estado para la nueva habitación."
+                : `Editando detalles para la habitación ${currentRoom?.name}.`}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="floor">Piso</Label>
-                <Input
-                  id="floor"
-                  type="number"
-                  min="1"
-                  value={formData.floor}
-                  onChange={(e) => setFormData({ ...formData, floor: Number.parseInt(e.target.value) })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Tipo de habitación</Label>
-                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                  <SelectTrigger id="type">
-                    <SelectValue placeholder="Seleccionar tipo" />
+          {isNewRoom ? (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="typeRoomId" className="text-right">
+                  Tipo
+                </Label>
+                <Select
+                  value={String(newRoomData.typeRoomId)}
+                  onValueChange={(value) => setNewRoomData(prev => ({ ...prev, typeRoomId: parseInt(value) }))}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Seleccione un tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {roomTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
+                    {typeRooms.map(tr => (
+                      <SelectItem key={tr.id} value={String(tr.id)}>
+                        {tr.description} (${tr.price.toFixed(2)})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Estado</Label>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="state" className="text-right">
+                  Estado
+                </Label>
                 <Select
-                  value={formData.status}
-                  onValueChange={(value) => setFormData({ ...formData, status: value as RoomStatus })}
+                  value={newRoomData.state}
+                  onValueChange={(value: RoomStatus) => setNewRoomData(prev => ({ ...prev, state: value }))}
                 >
-                  <SelectTrigger id="status">
-                    <SelectValue placeholder="Seleccionar estado" />
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Seleccione un estado" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="vacant">Libre</SelectItem>
+                    <SelectItem value="available">Disponible</SelectItem>
                     <SelectItem value="occupied">Ocupada</SelectItem>
                     <SelectItem value="maintenance">Mantenimiento</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+          ) : (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nombre</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="capacity">Capacidad (personas)</Label>
-                <Input
-                  id="capacity"
-                  type="number"
-                  min="1"
-                  value={formData.capacity}
-                  onChange={(e) => setFormData({ ...formData, capacity: Number.parseInt(e.target.value) })}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="floor">Piso</Label>
+                  <Input
+                    id="floor"
+                    type="number"
+                    min="1"
+                    value={formData.floor}
+                    onChange={(e) => setFormData({ ...formData, floor: Number.parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="type">Tipo de habitación</Label>
+                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                    <SelectTrigger id="type">
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roomTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Estado</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData({ ...formData, status: value as RoomStatus })}
+                  >
+                    <SelectTrigger id="status">
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="available">Disponible</SelectItem>
+                      <SelectItem value="occupied">Ocupada</SelectItem>
+                      <SelectItem value="maintenance">Mantenimiento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="capacity">Capacidad (personas)</Label>
+                  <Input
+                    id="capacity"
+                    type="number"
+                    min="1"
+                    value={formData.capacity}
+                    onChange={(e) => setFormData({ ...formData, capacity: Number.parseInt(e.target.value) })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="price">Precio por noche ($)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    min="0"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: Number.parseInt(e.target.value) })}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="price">Precio por noche ($)</Label>
+                <Label>Dispositivos IoT</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {deviceOptions.map((device) => (
+                    <div key={device} className="flex items-center space-x-2">
+                      <Switch
+                        id={`device-${device}`}
+                        checked={formData.devices.includes(device)}
+                        onCheckedChange={() => handleDeviceToggle(device)}
+                      />
+                      <Label htmlFor={`device-${device}`} className="text-sm cursor-pointer">
+                        {device.charAt(0).toUpperCase() + device.slice(1)}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastCleaned">Última limpieza</Label>
                 <Input
-                  id="price"
-                  type="number"
-                  min="0"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: Number.parseInt(e.target.value) })}
+                  id="lastCleaned"
+                  type="date"
+                  value={formData.lastCleaned}
+                  onChange={(e) => setFormData({ ...formData, lastCleaned: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notas</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Notas adicionales sobre la habitación..."
+                  rows={3}
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>Dispositivos IoT</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {deviceOptions.map((device) => (
-                  <div key={device} className="flex items-center space-x-2">
-                    <Switch
-                      id={`device-${device}`}
-                      checked={formData.devices.includes(device)}
-                      onCheckedChange={() => handleDeviceToggle(device)}
-                    />
-                    <Label htmlFor={`device-${device}`} className="text-sm cursor-pointer">
-                      {device.charAt(0).toUpperCase() + device.slice(1)}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="lastCleaned">Última limpieza</Label>
-              <Input
-                id="lastCleaned"
-                type="date"
-                value={formData.lastCleaned}
-                onChange={(e) => setFormData({ ...formData, lastCleaned: e.target.value })}
-              />
-            </div>            <div className="space-y-2">
-              <Label htmlFor="notes">Notas</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Notas adicionales sobre la habitación..."
-                rows={3}
-              />
-            </div>
-          </div>
+          )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>

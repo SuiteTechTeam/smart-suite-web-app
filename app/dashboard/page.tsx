@@ -19,10 +19,15 @@ import {
   Menu,
   X,
   Search,
-  ChevronLeft
+  ChevronLeft,
+  Loader2
 } from "lucide-react"
 import { getAllRooms, Room } from "@/lib/services/rooms-service"
 import { getAllIoTDevices, getRoomDevicesByRoom, IoTDevice, RoomDevice } from "@/lib/services/iot-service"
+import { useAuth } from "@/hooks/use-auth"
+import { getHotelsByOwner, type Hotel } from "@/lib/services/hotel-service"
+import { HotelFormDialog } from "@/components/dialogs/HotelFormDialog"
+import { toast } from "sonner"
 
 type RoomStatus = "occupied" | "vacant" | "maintenance"
 
@@ -81,463 +86,127 @@ const statusConfig = {
   },
 }
 
-export default function HotelRoomDashboard() {
-  const [selectedRoom, setSelectedRoom] = useState<AnalyticsRoom | null>(null)
-  const [roomsData, setRoomsData] = useState<AnalyticsRoom[]>([])
-  const [iotDevices, setIotDevices] = useState<IoTDevice[]>([])
-  const [roomDevices, setRoomDevices] = useState<RoomDevice[]>([])
-  const [loading, setLoading] = useState(true)
-  const [temperatureData, setTemperatureData] = useState<TemperatureData[]>([])
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [deviceStates, setDeviceStates] = useState<{
-    luz: boolean
-    termostato: number
-    cerradura: boolean
-    wifi: boolean
-  }>({
-    luz: false,
-    termostato: 22,
-    cerradura: true,
-    wifi: true,
-  })
-  const [search, setSearch] = useState("")
-  // Cargar datos de la API
+export default function DashboardPage() {
+	const { user } = useAuth();
+	const [hotels, setHotels] = useState<Hotel[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [isHotelFormOpen, setIsHotelFormOpen] = useState(false);
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const token = localStorage.getItem('auth_token');
+		const fetchHotels = async () => {
+			if (user && user.roleId === "1") {
+				const token = localStorage.getItem("auth_token");
         if (!token) {
-          console.error('No auth token found');
-          setLoading(false);
+					toast.error("Error de autenticación.");
+					setIsLoading(false);
           return;
         }
-          // Cargar habitaciones
-        const roomsResult = await getAllRooms(token);
-        if (roomsResult.success && roomsResult.data && roomsResult.data.length > 0) {
-          const analyticsRooms = roomsResult.data.map(convertRoomToAnalyticsRoom);
-          setRoomsData(analyticsRooms);
-          setSelectedRoom(analyticsRooms[0]);
+
+				try {
+					const result = await getHotelsByOwner(Number(user.id), token);
+					if (result.success && result.data) {
+						setHotels(result.data);
+						if (result.data.length === 0) {
+							setIsHotelFormOpen(true);
+						}
         } else {
-          console.error('Error loading rooms:', roomsResult.message || 'No se pudieron cargar las habitaciones');
-        }        // Cargar dispositivos IoT
-        const iotResult = await getAllIoTDevices(token);
-        if (iotResult.success && iotResult.data) {
-          setIotDevices(iotResult.data);
+						// No mostrar error si el owner simplemente no tiene hoteles aun
+						if (result.message?.includes("not found")) {
+							setHotels([]);
+							setIsHotelFormOpen(true);
         } else {
-          console.error('Error loading IoT devices:', iotResult.message || 'No se pudieron cargar los dispositivos IoT');
-        }
-        
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+							toast.error(result.message || "No se pudieron cargar los hoteles.");
+						}
+					}
+				} catch (error: any) {
+					toast.error(error.message || "Ocurrió un error al buscar hoteles.");
+				}
+			}
+			setIsLoading(false);
+		};
 
-    loadData();
-  }, []);
+		if (user) {
+			fetchHotels();
+		}
+	}, [user]);
 
-  // Cargar dispositivos de la habitación seleccionada
-  useEffect(() => {
-    if (selectedRoom) {
-      setTemperatureData(generateTemperatureData(selectedRoom.id));
-      loadRoomDevices(selectedRoom.id);
-    }
-  }, [selectedRoom]);
+	const handleHotelCreated = (newHotel: Hotel) => {
+		setHotels(prev => [...prev, newHotel]);
+		localStorage.setItem("selected_hotel_id", String(newHotel.id));
+		toast.info(
+			`Ahora ve a "Gestión del Hotel" para añadir tipos de habitación.`,
+		);
+	};
 
-  const loadRoomDevices = async (roomId: number) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) return;
-      
-      const result = await getRoomDevicesByRoom(roomId, token);
-      if (result.success && result.data) {
-        setRoomDevices(result.data);
-        // Actualizar estados de dispositivos basado en datos reales
-        updateDeviceStatesFromIoT(result.data);
-      }
-    } catch (error) {
-      console.error('Error loading room devices:', error);
-    }
-  };
-
-  const updateDeviceStatesFromIoT = (devices: RoomDevice[]) => {
-    // Mapear dispositivos IoT reales a estados de UI
-    const iotDeviceMap = new Map(iotDevices.map(device => [device.id, device]));
-    
-    const newStates = {
-      luz: false,
-      termostato: 22,
-      cerradura: true,
-      wifi: false,
-    };
-
-    devices.forEach(roomDevice => {
-      const iotDevice = iotDeviceMap.get(roomDevice.iot_device_id);
-      if (iotDevice) {
-        switch (iotDevice.device_type.toLowerCase()) {
-          case 'light':
-          case 'luz':
-            newStates.luz = iotDevice.status === 'active';
-            break;
-          case 'thermostat':
-          case 'termostato':
-            newStates.termostato = 22; // Valor por defecto, se podría obtener de la configuración
-            break;
-          case 'lock':
-          case 'cerradura':
-            newStates.cerradura = iotDevice.status === 'active';
-            break;
-          case 'wifi':
-            newStates.wifi = iotDevice.status === 'active';
-            break;
-        }
-      }
-    });
-
-    setDeviceStates(newStates);
-  };
-  const handleRoomSelect = (room: AnalyticsRoom) => {
-    setSelectedRoom(room)
-    // Los estados de dispositivos se actualizarán automáticamente en el useEffect de loadRoomDevices
-    setSidebarOpen(false)
+	if (isLoading) {
+    return (
+			<div className="flex items-center justify-center h-full">
+				<Loader2 className="h-8 w-8 animate-spin" />
+				<p className="ml-2">Cargando dashboard...</p>
+        </div>
+		);
   }
 
-  const getStatusBadge = (status: RoomStatus) => (
-    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${statusConfig[status].color}`}>
-      <div className={`w-2 h-2 rounded-full mr-1.5 ${statusConfig[status].dot}`} />
-      {statusConfig[status].label}
-    </div>
-  )
-
-  const filteredRooms = roomsData.filter(room =>
-    room.name.toLowerCase().includes(search.toLowerCase()) ||
-    String(room.id).includes(search)
-  )
-
-  // Mostrar loading mientras se cargan los datos
-  if (loading) {
+	if (user?.roleId !== "1") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Cargando habitaciones...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Mostrar mensaje si no hay habitaciones
-  if (!selectedRoom || roomsData.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Home className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">No hay habitaciones disponibles</h2>
-          <p className="text-muted-foreground">No se encontraron habitaciones en el sistema.</p>
-        </div>
-      </div>
-    )
+			<Card>
+				<CardHeader>
+					<CardTitle>Bienvenido al Dashboard</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<p>Seleccione una opción del menú de la izquierda para comenzar.</p>
+				</CardContent>
+			</Card>
+		);
   }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <div className="fixed left-0 top-0 h-full w-80 bg-card border-r border-border shadow-xl">
-            <RoomSidebar 
-              search={search}
-              setSearch={setSearch}
-              filteredRooms={filteredRooms}
-              selectedRoom={selectedRoom}
-              handleRoomSelect={handleRoomSelect}
-              getStatusBadge={getStatusBadge}
-              setSidebarOpen={setSidebarOpen}
-              isMobile={true}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-80 lg:flex-col border-r border-border bg-card">
-        <RoomSidebar 
-          search={search}
-          setSearch={setSearch}
-          filteredRooms={filteredRooms}
-          selectedRoom={selectedRoom}
-          handleRoomSelect={handleRoomSelect}
-          getStatusBadge={getStatusBadge}
-          setSidebarOpen={setSidebarOpen}
-          isMobile={false}
-        />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="flex items-center justify-between px-4 lg:px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setSidebarOpen(true)} 
-              className="lg:hidden"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
             <div>
-              <h1 className="text-lg font-semibold text-foreground">{selectedRoom.name}</h1>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Piso {selectedRoom.floor}</span>
-                <span>•</span>
-                {getStatusBadge(selectedRoom.status)}
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-4 lg:p-6">
-            <Tabs defaultValue="devices" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6">
-                <TabsTrigger value="devices" className="flex items-center gap-2">
-                  <Home className="h-4 w-4" />
-                  <span className="hidden sm:inline">Dispositivos</span>
-                </TabsTrigger>
-                <TabsTrigger value="temperature" className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Temperatura</span>
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  <span className="hidden sm:inline">Configuración</span>
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="devices" className="space-y-6">
-                {/* Quick Status Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatusCard 
-                    icon={deviceStates.luz ? <Lightbulb className="h-6 w-6" /> : <LightbulbOff className="h-6 w-6" />}
-                    title="Iluminación"
-                    status={deviceStates.luz ? "Encendida" : "Apagada"}
-                    active={deviceStates.luz}
-                    color="amber"
-                  />
-                  <StatusCard 
-                    icon={<Thermometer className="h-6 w-6" />}
-                    title="Temperatura"
-                    status={`${deviceStates.termostato}°C`}
-                    active={true}
-                    color="red"
-                  />
-                  <StatusCard 
-                    icon={<Lock className="h-6 w-6" />}
-                    title="Cerradura"
-                    status={deviceStates.cerradura ? "Bloqueada" : "Desbloqueada"}
-                    active={deviceStates.cerradura}
-                    color="indigo"
-                  />
-                  <StatusCard 
-                    icon={<Wifi className="h-6 w-6" />}
-                    title="WiFi"
-                    status={deviceStates.wifi ? "Activo" : "Inactivo"}
-                    active={deviceStates.wifi}
-                    color="emerald"
-                  />
-                </div>
-
-                {/* Device Controls */}
-                <div className="grid gap-6 md:grid-cols-2">
-                  <DeviceCard
-                    icon={deviceStates.luz ? <Lightbulb className="h-5 w-5 text-amber-500" /> : <LightbulbOff className="h-5 w-5 text-muted-foreground" />}
-                    title="Iluminación"
-                    description="Control de luces de la habitación"
-                    footer="Última activación: hace 35 minutos"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{deviceStates.luz ? "Encendida" : "Apagada"}</span>
-                      <Switch 
-                        checked={deviceStates.luz} 
-                        onCheckedChange={(checked) => setDeviceStates(prev => ({ ...prev, luz: checked }))} 
-                      />
-                    </div>
-                  </DeviceCard>
-
-                  <DeviceCard
-                    icon={<Thermometer className="h-5 w-5 text-red-500" />}
-                    title="Termostato"
-                    description="Control de temperatura"
-                    footer="Modo: Automático"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-3xl font-bold">{deviceStates.termostato}°C</div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() =>
-                            setDeviceStates(prev => ({
-                              ...prev,
-                              termostato: Math.max(16, prev.termostato - 1),
-                            }))
-                          }
-                        >
-                          -
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() =>
-                            setDeviceStates(prev => ({
-                              ...prev,
-                              termostato: Math.min(30, prev.termostato + 1),
-                            }))
-                          }
-                        >
-                          +
-                        </Button>
-                      </div>
-                    </div>
-                  </DeviceCard>
-
-                  <DeviceCard
-                    icon={<Lock className="h-5 w-5 text-indigo-500" />}
-                    title="Cerradura Inteligente"
-                    description="Control de acceso a la habitación"
-                    footer="Último acceso: 14:27"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{deviceStates.cerradura ? "Bloqueada" : "Desbloqueada"}</span>
-                      <Switch
-                        checked={deviceStates.cerradura}
-                        onCheckedChange={(checked) => setDeviceStates(prev => ({ ...prev, cerradura: checked }))}
-                      />
-                    </div>
-                  </DeviceCard>
-
-                  <DeviceCard
-                    icon={<Wifi className="h-5 w-5 text-emerald-500" />}
-                    title="WiFi"
-                    description="Control de conexión a internet"
-                    footer="Dispositivos conectados: 2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{deviceStates.wifi ? "Activo" : "Inactivo"}</span>
-                      <Switch
-                        checked={deviceStates.wifi}
-                        onCheckedChange={(checked) => setDeviceStates(prev => ({ ...prev, wifi: checked }))}
-                      />
-                    </div>
-                  </DeviceCard>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="temperature">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Histórico de Temperatura (24h)</CardTitle>
-                    <CardDescription>Temperatura registrada en °C para {selectedRoom.name}</CardDescription>
+					<CardTitle>Dashboard del Propietario</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-[300px] md:h-[400px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={temperatureData}>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                          <XAxis 
-                            dataKey="time" 
-                            className="fill-muted-foreground text-xs"
-                            tick={{ fontSize: 12 }}
-                          />
-                          <YAxis 
-                            domain={[18, 28]} 
-                            className="fill-muted-foreground text-xs"
-                            tick={{ fontSize: 12 }}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--card))",
-                              border: "1px solid hsl(var(--border))",
-                              borderRadius: "8px",
-                              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                            }}
-                          />
-                          <Legend />
-                          <Line
-                            type="monotone"
-                            dataKey="temperatura"
-                            stroke="hsl(var(--destructive))"
-                            strokeWidth={2}
-                            dot={{ r: 3, strokeWidth: 2 }}
-                            activeDot={{ r: 5, strokeWidth: 2 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
+					{hotels.length > 0 ? (
+						<div>
+							<h2 className="text-xl font-semibold mb-2">Mis Hoteles</h2>
+							<ul>
+								{hotels.map(hotel => (
+									<li key={hotel.id} className="p-2 border-b">
+										{hotel.name}
+									</li>
+								))}
+							</ul>
+						</div>
+					) : (
+						<div className="text-center p-4 border-2 border-dashed rounded-lg">
+							<h3 className="text-lg font-semibold">
+								¡Bienvenido a Smart Suite!
+							</h3>
+							<p className="text-muted-foreground mt-1">
+								Parece que aún no tienes hoteles registrados.
+							</p>
+							<Button
+								onClick={() => setIsHotelFormOpen(true)}
+								className="mt-4"
+							>
+								Crear Mi Primer Hotel
+							</Button>
                     </div>
+					)}
                   </CardContent>
-                  <CardFooter>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800">
-                        Promedio: 22.5°C
-                      </Badge>
-                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">
-                        Mínima: 19.8°C
-                      </Badge>
-                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
-                        Máxima: 24.7°C
-                      </Badge>
-                    </div>
-                  </CardFooter>
                 </Card>
-              </TabsContent>
 
-              <TabsContent value="settings">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Configuración de la Habitación</CardTitle>
-                    <CardDescription>Ajustes y preferencias para {selectedRoom.name}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <SettingItem
-                      title="Modo Ahorro de Energía"
-                      description="Reducir consumo cuando esté desocupada"
-                      defaultChecked={true}
-                    />
-                    <Separator />
-                    <SettingItem
-                      title="No Molestar"
-                      description="Desactivar notificaciones al personal"
-                      defaultChecked={false}
-                    />
-                    <Separator />
-                    <SettingItem
-                      title="Limpieza Automática"
-                      description="Programar limpieza diaria"
-                      defaultChecked={true}
-                    />
-                    <Separator />
-                    <SettingItem
-                      title="Modo Automático"
-                      description="Ajustar dispositivos según ocupación"
-                      defaultChecked={true}
-                    />
-                  </CardContent>
-                  <CardFooter className="flex flex-col sm:flex-row gap-3 sm:justify-between">
-                    <Button variant="outline" className="w-full sm:w-auto">Restablecer valores</Button>
-                    <Button className="w-full sm:w-auto">Guardar cambios</Button>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
-            </Tabs>
+			{user && (
+				<HotelFormDialog
+					open={isHotelFormOpen}
+					onOpenChange={setIsHotelFormOpen}
+					onHotelCreated={handleHotelCreated}
+					ownerId={Number(user.id)}
+				/>
+			)}
           </div>
-        </main>
-      </div>
-    </div>
-  )
+	);
 }
 
 // Component for room sidebar

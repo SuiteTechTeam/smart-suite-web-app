@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
   const calculateMetrics = (): MonthlyMetrics => {
     const totalRooms = rooms.length;
     const occupiedRooms = rooms.filter(room => room.state === "occupied").length;
-    const vacantRooms = rooms.filter(room => room.state === "vacant").length;
+    const vacantRooms = rooms.filter(room => room.state === "available").length;
     const maintenanceRooms = rooms.filter(room => room.state === "maintenance").length;
     
     const occupancyRate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
@@ -363,17 +363,17 @@ export default function AnalyticsPage() {
         
         <StatCard
           title="Tarifa Promedio"
-          value={`$${monthlyMetrics.averageRoomRate}`}
-          description="Precio promedio por habitación"
-          icon={<DollarSign className="h-5 w-5 text-green-600" />}
+          value="S/.85"
+          description="Precio promediado por habitación"
+          icon={<DollarSign className="text-green-500" />}
           trend="up"
         />
         
         <StatCard
           title="Ingresos Estimados"
-          value={`$${monthlyMetrics.totalRevenue.toLocaleString()}`}
+          value="S/.1,275"
           description="Ingresos mensuales estimados"
-          icon={<TrendingUp className="h-5 w-5 text-green-600" />}
+          icon={<TrendingUp className="text-green-500" />}
           trend="up"
         />
         

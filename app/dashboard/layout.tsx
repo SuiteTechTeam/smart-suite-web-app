@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, AlertTriangle, Menu, LayoutDashboard, Boxes, BarChart, BedDouble, Users } from "lucide-react";
+import { LogOut, AlertTriangle, Menu, LayoutDashboard, Boxes, BarChart, BedDouble, Users, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import {
@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart },
   { href: "/dashboard/rooms", label: "Rooms", icon: BedDouble },
   { href: "/dashboard/customers", label: "Customers", icon: Users },
+  { href: "/dashboard/iot", label: "IoT", icon: Wifi },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

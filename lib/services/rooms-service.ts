@@ -23,7 +23,7 @@ function handleApiError(error: any, defaultMessage: string): ApiResult<any> {
 }
 
 // Tipos de estados posibles para las habitaciones
-export type RoomState = "occupied" | "vacant" | "maintenance";
+export type RoomState = "occupied" | "available" | "maintenance";
 
 export interface Room {
   id: number;
@@ -86,9 +86,17 @@ export async function getAllRooms(token: string, hotelId: number = 1): Promise<A
     const validRooms = data.map(room => {
       // Asegurarse de que el estado es uno de los valores permitidos
       if (room && typeof room === 'object') {
-        if (!room.state || !['occupied', 'vacant', 'maintenance'].includes(room.state)) {
-          console.warn(`Estado no válido en habitación ${room.id || 'desconocida'}: "${room.state}", asignando "vacant" por defecto`);
-          room.state = 'vacant';
+        if (room.state && typeof room.state === 'string') {
+          const lowerCaseState = room.state.toLowerCase();
+          if (['occupied', 'available', 'maintenance'].includes(lowerCaseState)) {
+            room.state = lowerCaseState; // Normalize to lowercase
+          } else {
+            console.warn(`Estado no válido en habitación ${room.id || 'desconocida'}: "${room.state}", asignando "available" por defecto`);
+            room.state = 'available';
+          }
+        } else {
+          console.warn(`Estado no definido o inválido en habitación ${room.id || 'desconocida'}, asignando "available" por defecto`);
+          room.state = 'available';
         }
       }
       return room;
@@ -160,7 +168,13 @@ export async function getRoomsByState(state: string, token: string): Promise<Api
   }
 }
 
-export async function createRoom(room: Omit<Room, 'id'>, token: string): Promise<ApiResult<Room>> {
+export interface CreateRoomData {
+  typeRoomId: number;
+  hotelId: number;
+  state: string;
+}
+
+export async function createRoom(room: CreateRoomData, token: string): Promise<ApiResult<Room>> {
   try {
     const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.ROOMS.CREATE), {
       method: "POST",

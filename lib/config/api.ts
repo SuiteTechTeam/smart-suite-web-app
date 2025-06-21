@@ -22,12 +22,27 @@ export const API_CONFIG = {
       GET_ALL: "/supply/get-all-supplies",
       GET_BY_PROVIDER: "/supply/provider/{providerId}",
     },
+    PAYMENT_CUSTOMER: {
+      GET_ALL: "/payment-customer",
+      GET_BY_ID: "/payment-customer/{paymentCustomerId}",
+      CREATE: "/payment-customer",
+      UPDATE: "/payment-customer/{paymentCustomerId}",
+      GET_BY_CUSTOMER: "/payment-customer/by-customer/{customerId}",
+    },
     PROVIDERS: {
       CREATE: "/providers",
       GET_ALL: "/providers",
       GET_BY_ID: "/providers/{providerId}",
       UPDATE: "/providers/{providerId}",
       DELETE: "/providers/{providerId}",
+    },
+    HOTELS: {
+      CREATE: "/hotels",
+      GET_BY_OWNER: "/hotels/owner/{ownerId}",
+    },
+    TYPEROOM: {
+      CREATE: "/type-room/create-type-room",
+      GET_BY_HOTEL: "/type-room/hotel/{hotelId}",
     },
     SUPPLY_REQUEST: {
       CREATE: "/supply-request",
