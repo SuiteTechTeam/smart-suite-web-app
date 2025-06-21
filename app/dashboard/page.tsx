@@ -48,7 +48,7 @@ import { HotelFormDialog } from "@/components/dialogs/HotelFormDialog"
 import { useHotel } from "@/contexts/HotelContext"
 import { toast } from "sonner"
 
-type RoomStatus = "occupied" | "vacant" | "maintenance"
+type RoomStatus = "occupied" | "available" | "maintenance"
 
 interface AnalyticsRoom {
   id: number
@@ -93,7 +93,7 @@ const statusConfig = {
     label: "Ocupada",
     dot: "bg-emerald-500",
   },
-  vacant: {
+  available: {
     color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
     label: "Libre",
     dot: "bg-blue-500",
