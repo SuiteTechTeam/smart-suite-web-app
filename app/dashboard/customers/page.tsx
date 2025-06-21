@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { PlusCircle, Users, CircleDollarSign, Wallet } from "lucide-react";
+import { PlusCircle, Users, CircleDollarSign, Wallet, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -9,10 +9,12 @@ import {
 	type PaymentCustomer,
 } from "@/lib/services/customer-service";
 
-
 import CustomerTable from "./components/CustomerTable";
 import FilterBar from "./components/FilterBar";
 import StatsPanel from "./components/StatsPanel";
+import AddPaymentDialog from "./modal/add-payment-dialogs";
+import EditPaymentDialog from "./modal/edit-payment-dialog";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function CustomersPage() {
 	const { user } = useAuth();
@@ -72,7 +74,9 @@ export default function CustomersPage() {
 			p =>
 				p.guestId.toString().includes(lowercaseFilter) ||
 				p.id.toString().includes(lowercaseFilter) ||
-				(p.guest?.email && p.guest.email.toLowerCase().includes(lowercaseFilter)),
+				(p.guest?.email && p.guest.email.toLowerCase().includes(lowercaseFilter)) ||
+				(p.guest?.name && p.guest.name.toLowerCase().includes(lowercaseFilter)) ||
+				(p.guest?.surname && p.guest.surname.toLowerCase().includes(lowercaseFilter)),
 		);
 	}, [payments, filter]);
 
@@ -93,26 +97,41 @@ export default function CustomersPage() {
 	];
 
 	return (
-		<main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-			<div className="flex items-center">
-				<h1 className="font-semibold text-lg md:text-2xl">
-					Pagos de Clientes
-				</h1>
-				<div className="ml-auto flex items-center gap-2">
-					<Button onClick={handleNewPayment}>
-						<PlusCircle className="h-4 w-4 mr-2" />
-						Nuevo Pago
-					</Button>
+		<main className="flex flex-1 flex-col gap-6 p-6 md:gap-8">
+			<div className="flex flex-col gap-1">
+				<div className="flex items-center">
+					<div className="flex items-center gap-2">
+						<div className="p-1.5 rounded-md bg-primary/10">
+							<LayoutDashboard className="h-5 w-5 text-primary" />
+						</div>
+						<h1 className="font-semibold text-xl md:text-2xl">
+							Pagos de Clientes
+						</h1>
+					</div>
+					<div className="ml-auto flex items-center gap-2">
+						<Button onClick={handleNewPayment} className="gap-1.5 shadow-sm">
+							<PlusCircle className="h-4 w-4" />
+							Nuevo Pago
+						</Button>
+					</div>
 				</div>
+				<p className="text-sm text-muted-foreground">
+					Gestiona los pagos de los huéspedes de tu hotel
+				</p>
 			</div>
 
 			<StatsPanel stats={stats} />
 
-			<div className="flex flex-col gap-4">
-				<FilterBar
-					onFilterChange={setFilter}
-					placeholder="Buscar por ID de pago, huésped o email..."
-				/>
+			<div className="flex flex-col gap-6">
+				<Card className="border border-border/40 shadow-sm overflow-hidden">
+					<CardContent className="p-4">
+						<FilterBar
+							onFilterChange={setFilter}
+							placeholder="Buscar por ID, nombre, apellido o email del huésped..."
+						/>
+					</CardContent>
+				</Card>
+				
 				<CustomerTable
 					payments={filteredPayments}
 					onEdit={handleEditPayment}
@@ -121,7 +140,22 @@ export default function CustomersPage() {
 				/>
 			</div>
 
-		
+			<AddPaymentDialog
+				open={isFormOpen && !selectedPayment}
+				onOpenChange={(open) => {
+					if (!open) setIsFormOpen(false);
+				}}
+				onSuccess={handleFormSuccess}
+			/>
+			
+			<EditPaymentDialog
+				open={isFormOpen && !!selectedPayment}
+				onOpenChange={(open) => {
+					if (!open) setIsFormOpen(false);
+				}}
+				onSuccess={handleFormSuccess}
+				payment={selectedPayment}
+			/>
 		</main>
 	);
 }

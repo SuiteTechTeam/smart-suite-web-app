@@ -152,6 +152,19 @@ export async function createPayment(paymentData: { guestId: number; finalAmount:
 
 export async function updatePayment(paymentCustomerId: number, paymentData: Partial<PaymentCustomer>, token: string): Promise<ApiResult<PaymentCustomer>> {
     try {
+        // Asegurarse de que el ID en la URL y en el cuerpo coincidan
+        const dataToSend = {
+            ...paymentData,
+            id: paymentCustomerId // Garantizar que el ID en el cuerpo coincida con el de la URL
+        };
+        
+        // Debug: Mostrar datos que se envían
+        console.log("Actualizando pago:", {
+            url: API_CONFIG.ENDPOINTS.PAYMENT_CUSTOMER.UPDATE.replace("{paymentCustomerId}", String(paymentCustomerId)),
+            paymentCustomerId,
+            dataToSend
+        });
+        
         const url = buildApiUrl(API_CONFIG.ENDPOINTS.PAYMENT_CUSTOMER.UPDATE.replace("{paymentCustomerId}", String(paymentCustomerId)));
         const response = await fetch(url, {
             method: "PUT",
@@ -159,10 +172,39 @@ export async function updatePayment(paymentCustomerId: number, paymentData: Part
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify(paymentData),
+            body: JSON.stringify(dataToSend),
+        });
+        
+        // Debug: Mostrar respuesta
+        if (!response.ok) {
+            console.error("Error en la respuesta:", {
+                status: response.status,
+                statusText: response.statusText
+            });
+            try {
+                const errorData = await response.clone().json();
+                console.error("Datos de error:", errorData);
+            } catch (e) {
+                console.error("No se pudo parsear la respuesta de error como JSON");
+            }
+        }
+        
+        return handleApiResponse(response);
+    } catch (error: any) {
+        console.error("Error en updatePayment:", error);
+        return handleApiError(error, "Error al actualizar el pago.");
+    }
+}
+
+export async function getAllGuests(token: string): Promise<ApiResult<Guest[]>> {
+    try {
+        const url = buildApiUrl(API_CONFIG.ENDPOINTS.USER.GUESTS);
+        const response = await fetch(url, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
         });
         return handleApiResponse(response);
     } catch (error: any) {
-        return handleApiError(error, "Error al actualizar el pago.");
+        return handleApiError(error, "Error al obtener la lista de huéspedes.");
     }
 }
