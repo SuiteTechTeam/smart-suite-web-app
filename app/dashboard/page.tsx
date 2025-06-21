@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -44,6 +45,7 @@ import { getAllIoTDevices, getRoomDevicesByRoom, IoTDevice, RoomDevice } from "@
 import { useAuth } from "@/hooks/use-auth"
 import { getHotelsByOwner, type Hotel } from "@/lib/services/hotel-service"
 import { HotelFormDialog } from "@/components/dialogs/HotelFormDialog"
+import { useHotel } from "@/contexts/HotelContext"
 import { toast } from "sonner"
 
 type RoomStatus = "occupied" | "vacant" | "maintenance"
@@ -105,10 +107,19 @@ const statusConfig = {
 
 export default function DashboardPage() {
 	const { user } = useAuth();
+	const router = useRouter();
+	const { setSelectedHotel } = useHotel();
 	const [hotels, setHotels] = useState<Hotel[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isHotelFormOpen, setIsHotelFormOpen] = useState(false);
-	const [hotelStats, setHotelStats] = useState<Record<number, { rooms: number, occupancy: number }>>({});
+	const [loadingStats, setLoadingStats] = useState<Set<number>>(new Set());
+	const [hotelStats, setHotelStats] = useState<Record<number, { 
+		rooms: number; 
+		occupancy: number; 
+		occupied: number; 
+		available: number; 
+		maintenance: number; 
+	}>>({});
 
   useEffect(() => {
 		const fetchHotels = async () => {
@@ -152,42 +163,107 @@ export default function DashboardPage() {
 		}
 	}, [user]);
 
-	// Función para obtener estadísticas básicas de cada hotel
+	// Función para obtener estadísticas reales de cada hotel
 	const fetchHotelStats = async (hotelId: number, token: string) => {
+		// Marcar como cargando
+		setLoadingStats(prev => new Set(prev).add(hotelId));
+		
 		try {
-			// Aquí podrías hacer llamadas a la API para obtener estadísticas reales
-			// Por ahora, simulamos datos
-			const mockStats = {
-				rooms: Math.floor(Math.random() * 50) + 10, // Entre 10 y 60 habitaciones
-				occupancy: Math.floor(Math.random() * 100), // Entre 0% y 100%
-			};
+			// Obtener habitaciones reales del hotel
+			const roomsResult = await getAllRooms(token, hotelId);
 			
-			setHotelStats(prev => ({
-				...prev,
-				[hotelId]: mockStats
-			}));
+			if (roomsResult.success && roomsResult.data) {
+				const rooms = roomsResult.data;
+				const totalRooms = rooms.length;
+				
+				// Calcular ocupación basada en los estados de las habitaciones
+				const occupiedRooms = rooms.filter(room => 
+					room.state === "occupied"
+				).length;
+				
+				const availableRooms = rooms.filter(room => 
+					room.state === "available"
+				).length;
+				
+				const maintenanceRooms = rooms.filter(room => 
+					room.state === "maintenance"
+				).length;
+				
+				const occupancyPercentage = totalRooms > 0 
+					? Math.round((occupiedRooms / totalRooms) * 100) 
+					: 0;
+				
+				setHotelStats(prev => ({
+					...prev,
+					[hotelId]: {
+						rooms: totalRooms,
+						occupancy: occupancyPercentage,
+						occupied: occupiedRooms,
+						available: availableRooms,
+						maintenance: maintenanceRooms
+					}
+				}));
+				
+				console.log(`Estadísticas del hotel ${hotelId}:`, {
+					total: totalRooms,
+					occupancy: occupancyPercentage,
+					occupied: occupiedRooms
+				});
+			} else {
+				// Si no hay habitaciones o hay error, establecer valores en 0
+				setHotelStats(prev => ({
+					...prev,
+					[hotelId]: {
+						rooms: 0,
+						occupancy: 0,
+						occupied: 0,
+						available: 0,
+						maintenance: 0
+					}
+				}));
+			}
 		} catch (error) {
 			console.warn(`Error fetching stats for hotel ${hotelId}:`, error);
+			// En caso de error, establecer valores en 0
+			setHotelStats(prev => ({
+				...prev,
+				[hotelId]: {
+					rooms: 0,
+					occupancy: 0,
+					occupied: 0,
+					available: 0,
+					maintenance: 0
+				}
+			}));
+		} finally {
+			// Quitar del estado de carga
+			setLoadingStats(prev => {
+				const newSet = new Set(prev);
+				newSet.delete(hotelId);
+				return newSet;
+			});
 		}
 	};
 
 	const handleHotelCreated = (newHotel: Hotel) => {
 		setHotels(prev => [...prev, newHotel]);
-		localStorage.setItem("selected_hotel_id", String(newHotel.id));
+		setSelectedHotel(newHotel);
 		toast.info(
 			`Ahora ve a "Gestión del Hotel" para añadir tipos de habitación.`,
 		);
 	};
 
 	const handleSelectHotel = (hotel: Hotel) => {
-		localStorage.setItem("selected_hotel_id", String(hotel.id));
+		setSelectedHotel(hotel);
 		toast.success(`Hotel "${hotel.name}" seleccionado`);
 		// Aquí podrías redirigir a una página específica si lo deseas
 	};
 
 	const handleViewHotel = (hotel: Hotel) => {
-		// Redirigir a la vista detallada del hotel
-		window.location.href = `/dashboard/hotel/${hotel.id}`;
+		// Seleccionar el hotel usando el contexto y redirigir a la página de habitaciones
+		setSelectedHotel(hotel);
+		toast.success(`Viendo habitaciones del hotel "${hotel.name}"`);
+		router.push('/dashboard/rooms');
 	};
 
 	const handleEditHotel = (hotel: Hotel) => {
@@ -297,21 +373,32 @@ export default function DashboardPage() {
                       </div>
                     </CardHeader>
 
-                    <CardContent className="space-y-4">                      {/* Stats */}
+                    <CardContent className="space-y-4">
+                      {/* Stats */}
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-blue-50 rounded-lg">
-                            <Bed className="h-4 w-4 text-blue-600" />
+                          <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                            <Bed className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div>
                             <p className="text-sm font-medium">Habitaciones</p>
                             <p className="text-xs text-muted-foreground">
-                              {hotelStats[hotel.id]?.rooms || 0} registradas
+                              {loadingStats.has(hotel.id) ? (
+                                <span className="flex items-center gap-1">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Cargando...
+                                </span>
+                              ) : (
+                                `${hotelStats[hotel.id]?.rooms || 0} registradas`
+                              )}
                             </p>
                           </div>
-                        </div><div className="flex items-center gap-2">
-                          <div className="p-2 bg-emerald-50 rounded-lg">
-                            <Users className="h-4 w-4 text-emerald-600" />
+                        </div>
+
+                        {/* Detalles de ocupación */}
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-emerald-50 dark:bg-emerald-950 rounded-lg">
+                            <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center justify-between mb-1">
@@ -319,7 +406,8 @@ export default function DashboardPage() {
                               <p className="text-xs text-muted-foreground">
                                 {hotelStats[hotel.id]?.occupancy || 0}%
                               </p>
-                            </div>                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                               <div 
                                 className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300" 
                                 style={{ width: `${hotelStats[hotel.id]?.occupancy || 0}%` }}
@@ -327,6 +415,39 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </div>
+
+                        {/* Distribución de habitaciones */}
+                        {hotelStats[hotel.id]?.rooms > 0 && (
+                          <div className="grid grid-cols-3 gap-2 pt-2">
+                            <div className="text-center">
+                              <div className="flex items-center justify-center gap-1 mb-1">
+                                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                                  {hotelStats[hotel.id]?.occupied || 0}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">Ocupadas</p>
+                            </div>
+                            <div className="text-center">
+                              <div className="flex items-center justify-center gap-1 mb-1">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
+                                  {hotelStats[hotel.id]?.available || 0}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">Libres</p>
+                            </div>
+                            <div className="text-center">
+                              <div className="flex items-center justify-center gap-1 mb-1">
+                                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                                  {hotelStats[hotel.id]?.maintenance || 0}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">Mantenim.</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Status */}

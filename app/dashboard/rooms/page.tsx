@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useContext } from "react"
 import { useRouter } from "next/navigation"
-import { Home, Settings, Layers, Plus, Search, Edit, Trash2, Filter, Building2 } from "lucide-react"
+import { Home, Settings, Layers, Plus, Search, Edit, Trash2, Filter, Building2, Users, Bed } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-mobile"
 import { toast } from "sonner"
 import { getAllRooms, createRoom, updateRoomState, updateRoom, Room } from "@/lib/services/rooms-service"
-import { getTypeRoomsByHotel, createTypeRoom, TypeRoom } from "@/lib/services/typeroom-service"
+import { getTypeRoomsByHotel, getAllTypeRooms, createTypeRoom, TypeRoom } from "@/lib/services/typeroom-service"
 import { useHotel } from "@/contexts/HotelContext"
 import { AuthContext } from "@/contexts/AuthContext"
 
@@ -57,7 +57,7 @@ interface StatusConfigType {
   [key: string]: {
     color: string;
     label: string;
-    icon: React.ReactNode;
+    iconColor: string;
   };
 }
 
@@ -66,17 +66,17 @@ const statusConfig: StatusConfigType = {
   occupied: {
     color: "bg-emerald-100 text-emerald-700 border-emerald-200",
     label: "Ocupada",
-    icon: <Badge variant="outline" className="bg-emerald-500 border-0 h-2 w-2 p-0 mr-2" />,
+    iconColor: "bg-emerald-500",
   },
   available: {
     color: "bg-sky-100 text-sky-700 border-sky-200",
     label: "Disponible",
-    icon: <Badge variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0 mr-2" />,
+    iconColor: "bg-sky-500",
   },
   maintenance: {
     color: "bg-amber-100 text-amber-700 border-amber-200",
     label: "Mantenimiento",
-    icon: <Badge variant="outline" className="bg-amber-500 border-0 h-2 w-2 p-0 mr-2" />,
+    iconColor: "bg-amber-500",
   },
 }
 
@@ -93,6 +93,7 @@ export default function RoomsAdminPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isTypeRoomDialogOpen, setIsTypeRoomDialogOpen] = useState(false)
+  const [isCreatingTypeRoom, setIsCreatingTypeRoom] = useState(false)
   const [currentRoom, setCurrentRoom] = useState<RoomData | null>(null)
   const [isNewRoom, setIsNewRoom] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -180,9 +181,10 @@ export default function RoomsAdminPage() {
           setFilteredRooms([]);
         }
 
-        const typeRoomsResult = await getTypeRoomsByHotel(selectedHotel.id, token);
+        const typeRoomsResult = await getAllTypeRooms(selectedHotel.id, token);
         if (typeRoomsResult.success && typeRoomsResult.data) {
           setTypeRooms(typeRoomsResult.data);
+          console.log("Tipos de habitación cargados:", typeRoomsResult.data);
         } else {
           console.warn("No se pudieron cargar los tipos de habitación:", typeRoomsResult.message);
           setTypeRooms([]);
@@ -338,21 +340,35 @@ export default function RoomsAdminPage() {
   }
 
   const getStatusBadge = (status: RoomStatus) => {
-    // Verificar que el estado exista en la configuración
-    const config = statusConfig[status];
-    if (!config) {
-      console.warn(`Estado no reconocido en getStatusBadge: ${status}, usando configuración de 'available'`);
-      return (
-        <div className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig["available"].color}`}>
-          {statusConfig["available"].icon}
-          {"Desconocido"}
-        </div>
-      );
-    }
+    const statusStyles = {
+      occupied: {
+        bg: "bg-emerald-100 dark:bg-emerald-900/30",
+        text: "text-emerald-700 dark:text-emerald-300",
+        border: "border-emerald-200 dark:border-emerald-700",
+        dot: "bg-emerald-500",
+        label: "Ocupada"
+      },
+      available: {
+        bg: "bg-sky-100 dark:bg-sky-900/30",
+        text: "text-sky-700 dark:text-sky-300", 
+        border: "border-sky-200 dark:border-sky-700",
+        dot: "bg-sky-500",
+        label: "Disponible"
+      },
+      maintenance: {
+        bg: "bg-amber-100 dark:bg-amber-900/30",
+        text: "text-amber-700 dark:text-amber-300",
+        border: "border-amber-200 dark:border-amber-700", 
+        dot: "bg-amber-500",
+        label: "Mantenimiento"
+      }
+    };
+
+    const config = statusStyles[status] || statusStyles.available;
     
     return (
-      <div className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {config.icon}
+      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${config.bg} ${config.text} ${config.border}`}>
+        <div className={`w-2 h-2 rounded-full ${config.dot}`}></div>
         {config.label}
       </div>
     );
@@ -397,17 +413,29 @@ export default function RoomsAdminPage() {
       return;
     }
 
-    if (newTypeRoomData.price <= 0) {
-      toast.error("El precio debe ser mayor a 0.");
+    if (!newTypeRoomData.price || newTypeRoomData.price <= 0 || isNaN(newTypeRoomData.price)) {
+      toast.error("El precio debe ser un número válido mayor a 0.");
       return;
     }
 
+    console.log("Creando tipo de habitación:", {
+      description: newTypeRoomData.description,
+      price: newTypeRoomData.price,
+      hotelId: selectedHotel.id,
+    });
+
+    setIsCreatingTypeRoom(true);
+    
     try {
       const result = await createTypeRoom({
         description: newTypeRoomData.description,
         price: newTypeRoomData.price,
         hotelId: selectedHotel.id,
-      }, token);      if (result.success && result.data) {
+      }, token);
+
+      console.log("Resultado de crear tipo de habitación:", result);
+
+      if (result.success && result.data) {
         toast.success("Tipo de habitación creado con éxito.");
         setTypeRooms(prev => [...prev, result.data!]);
         setNewTypeRoomData({ description: "", price: 0 });
@@ -416,63 +444,154 @@ export default function RoomsAdminPage() {
         // Actualizar el formulario de habitación con el nuevo tipo
         setNewRoomData(prev => ({ ...prev, typeRoomId: result.data!.id }));
       } else {
+        console.error("Error al crear tipo de habitación:", result.message);
         toast.error(result.message || "No se pudo crear el tipo de habitación.");
       }
     } catch (error: any) {
+      console.error("Excepción al crear tipo de habitación:", error);
       toast.error(error.message || "Ocurrió un error al crear el tipo de habitación.");
+    } finally {
+      setIsCreatingTypeRoom(false);
     }
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Header */}
-        <header className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-          <div className="flex items-center">
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden mr-2">
-              <Layers className="h-5 w-5" />
-              <span className="sr-only">Toggle sidebar</span>
-            </Button>
-            <div>
-              <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Administración de Habitaciones</h1>
-              <div className="text-sm text-slate-500 dark:text-slate-400">Gestiona las habitaciones del hotel</div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary dark:from-background dark:via-muted/50 dark:to-secondary">
+      <div className="flex-1 flex flex-col">
+        {/* Enhanced Header */}
+        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border/60">
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary/10 rounded-xl">
+                  <Building2 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">
+                    Administración de Habitaciones
+                  </h1>
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    {selectedHotel ? (
+                      <>
+                        <span>Hotel:</span>
+                        <Badge variant="secondary" className="font-medium">
+                          {selectedHotel.name}
+                        </Badge>
+                      </>
+                    ) : (
+                      <span>Selecciona un hotel para gestionar habitaciones</span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
+            <Button 
+              onClick={handleCreateRoom} 
+              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-200 px-6"
+              size="lg"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Nueva Habitación
+            </Button>
           </div>
-          <Button onClick={handleCreateRoom} className="flex items-center gap-1">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Nueva Habitación</span>
-          </Button>
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto p-4 md:p-6">
-          <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
-            <CardHeader className="pb-2">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="relative w-full md:w-64">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500 dark:text-slate-400" />
+        <main className="flex-1 p-6 space-y-6">
+          {/* Stats Overview */}
+          {selectedHotel && rooms.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-card to-muted border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-primary text-sm font-medium">Total</p>
+                      <p className="text-3xl font-bold text-foreground">{rooms.length}</p>
+                    </div>
+                    <div className="p-3 bg-primary/10 rounded-full">
+                      <Home className="h-6 w-6 text-primary" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-card to-muted border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-chart-1 text-sm font-medium">Ocupadas</p>
+                      <p className="text-3xl font-bold text-foreground">
+                        {rooms.filter((r) => r.status === "occupied").length}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-chart-1/10 rounded-full">
+                      <Users className="h-6 w-6 text-chart-1" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-card to-muted border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-chart-2 text-sm font-medium">Disponibles</p>
+                      <p className="text-3xl font-bold text-foreground">
+                        {rooms.filter((r) => r.status === "available").length}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-chart-2/10 rounded-full">
+                      <Bed className="h-6 w-6 text-chart-2" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-card to-muted border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-chart-4 text-sm font-medium">Mantenimiento</p>
+                      <p className="text-3xl font-bold text-foreground">
+                        {rooms.filter((r) => r.status === "maintenance").length}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-chart-4/10 rounded-full">
+                      <Settings className="h-6 w-6 text-chart-4" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Filters and Search */}
+          <Card className="bg-card/70 backdrop-blur-sm border-border/60">
+            <CardContent className="p-6">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Buscar habitación..."
-                    className="pl-8"
+                    placeholder="Buscar por nombre, ID o tipo..."
+                    className="pl-10 bg-background border-input focus:border-ring focus:ring-ring/20"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                   <Select
                     value={statusFilter.toString()}
                     onValueChange={(value) => setStatusFilter(value as RoomStatus | "all")}
                   >
-                    <SelectTrigger className="w-[130px]">
+                    <SelectTrigger className="w-[140px] bg-background">
                       <div className="flex items-center gap-2">
                         <Filter className="h-4 w-4" />
                         <span>Estado</span>
                       </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="all">Todos los estados</SelectItem>
                       <SelectItem value="available">Disponible</SelectItem>
                       <SelectItem value="occupied">Ocupada</SelectItem>
                       <SelectItem value="maintenance">Mantenimiento</SelectItem>
@@ -483,14 +602,14 @@ export default function RoomsAdminPage() {
                     value={floorFilter.toString()}
                     onValueChange={(value) => setFloorFilter(value === "all" ? "all" : Number.parseInt(value))}
                   >
-                    <SelectTrigger className="w-[130px]">
+                    <SelectTrigger className="w-[140px] bg-background">
                       <div className="flex items-center gap-2">
                         <Layers className="h-4 w-4" />
                         <span>Piso</span>
                       </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="all">Todos los pisos</SelectItem>
                       {getUniqueFloors().map((floor) => (
                         <SelectItem key={floor} value={floor.toString()}>
                           Piso {floor}
@@ -500,88 +619,156 @@ export default function RoomsAdminPage() {
                   </Select>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Rooms Table */}
+          <Card className="bg-card/70 backdrop-blur-sm border-border/60 shadow-xl">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">
+                    Lista de Habitaciones
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {filteredRooms.length} habitaciones encontradas
+                  </p>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border border-slate-200 dark:border-slate-700">
+            <CardContent className="p-0">
+              <div className="overflow-hidden">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[80px]">ID</TableHead>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Piso</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Capacidad</TableHead>
-                      <TableHead>Precio</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow className="border-border">
+                      <TableHead className="w-[80px] font-semibold text-foreground">ID</TableHead>
+                      <TableHead className="font-semibold text-foreground">Habitación</TableHead>
+                      <TableHead className="font-semibold text-foreground">Piso</TableHead>
+                      <TableHead className="font-semibold text-foreground">Tipo</TableHead>
+                      <TableHead className="font-semibold text-foreground">Capacidad</TableHead>
+                      <TableHead className="font-semibold text-foreground">Precio</TableHead>
+                      <TableHead className="font-semibold text-foreground">Estado</TableHead>
+                      <TableHead className="text-right font-semibold text-foreground">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {!selectedHotel ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <Building2 className="h-8 w-8 text-muted-foreground" />
-                            <span>Selecciona un hotel para ver las habitaciones</span>
+                        <TableCell colSpan={8} className="h-32">
+                          <div className="flex flex-col items-center justify-center space-y-3">
+                            <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full">
+                              <Building2 className="h-8 w-8 text-slate-400" />
+                            </div>
+                            <div className="text-center">
+                              <p className="font-medium text-slate-900 dark:text-white">No hay hotel seleccionado</p>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Selecciona un hotel desde el dashboard para ver las habitaciones
+                              </p>
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>
                     ) : isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          Cargando habitaciones...
+                        <TableCell colSpan={8} className="h-32">
+                          <div className="flex flex-col items-center justify-center space-y-3">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Cargando habitaciones...</p>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ) : filteredRooms.length > 0 ? (
                       filteredRooms.map((room) => (
-                        <TableRow key={room.id}>
-                          <TableCell className="font-medium">{room.id}</TableCell>
-                          <TableCell>{room.name}</TableCell>
-                          <TableCell>{room.floor}</TableCell>
-                          <TableCell>{room.type}</TableCell>
-                          <TableCell>{room.capacity} personas</TableCell>
-                          <TableCell>${room.price}/noche</TableCell>
+                        <TableRow 
+                          key={room.id} 
+                          className="hover:bg-muted/50 transition-colors border-border"
+                        >
+                          <TableCell className="font-mono font-medium text-slate-600 dark:text-slate-300">
+                            #{room.id}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                <Home className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-slate-900 dark:text-white">{room.name}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Habitación</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-medium">
+                              Piso {room.floor}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-slate-700 dark:text-slate-300 font-medium">{room.type}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-1">
+                              <Users className="h-4 w-4 text-slate-400" />
+                              <span className="text-slate-700 dark:text-slate-300">{room.capacity}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-green-600 dark:text-green-400">
+                              ${room.price}
+                            </span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">/noche</span>
+                          </TableCell>
                           <TableCell>{getStatusBadge(room.status)}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                >
                                   <Settings className="h-4 w-4" />
                                   <span className="sr-only">Acciones</span>
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => handleEditRoom(room)}>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                  Acciones
+                                </DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleEditRoom(room)} className="cursor-pointer">
                                   <Edit className="h-4 w-4 mr-2" />
                                   Editar habitación
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
+                                <DropdownMenuLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                  Cambiar estado
+                                </DropdownMenuLabel>
                                 <DropdownMenuItem 
                                   onClick={() => handleQuickStatusChange(room.id, "available")}
                                   disabled={room.status === "available"}
+                                  className="cursor-pointer"
                                 >
-                                  <Badge variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0 mr-2" />
+                                  <Badge key={`${room.id}-available-badge`} variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0 mr-2" />
                                   Disponible
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
                                   onClick={() => handleQuickStatusChange(room.id, "occupied")}
                                   disabled={room.status === "occupied"}
+                                  className="cursor-pointer"
                                 >
-                                  <Badge variant="outline" className="bg-emerald-500 border-0 h-2 w-2 p-0 mr-2" />
+                                  <Badge key={`${room.id}-occupied-badge`} variant="outline" className="bg-emerald-500 border-0 h-2 w-2 p-0 mr-2" />
                                   Ocupada
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
                                   onClick={() => handleQuickStatusChange(room.id, "maintenance")}
                                   disabled={room.status === "maintenance"}
+                                  className="cursor-pointer"
                                 >
-                                  <Badge variant="outline" className="bg-amber-500 border-0 h-2 w-2 p-0 mr-2" />
+                                  <Badge key={`${room.id}-maintenance-badge`} variant="outline" className="bg-amber-500 border-0 h-2 w-2 p-0 mr-2" />
                                   Mantenimiento
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  className="text-red-600 dark:text-red-400"
+                                  className="text-red-600 dark:text-red-400 cursor-pointer"
                                   onClick={() => handleDeleteRoom(room.id)}
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
@@ -594,8 +781,18 @@ export default function RoomsAdminPage() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          No se encontraron habitaciones con los filtros seleccionados.
+                        <TableCell colSpan={8} className="h-32">
+                          <div className="flex flex-col items-center justify-center space-y-3">
+                            <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full">
+                              <Search className="h-8 w-8 text-slate-400" />
+                            </div>
+                            <div className="text-center">
+                              <p className="font-medium text-slate-900 dark:text-white">No se encontraron habitaciones</p>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Intenta ajustar los filtros o crear una nueva habitación
+                              </p>
+                            </div>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )}
@@ -603,23 +800,6 @@ export default function RoomsAdminPage() {
                 </Table>
               </div>
             </CardContent>
-            <CardFooter className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
-              <div>Total: {filteredRooms.length} habitaciones</div>
-              <div className="flex gap-4">
-                <div className="flex items-center gap-1">
-                  <Badge variant="outline" className="bg-emerald-500 border-0 h-2 w-2 p-0" />
-                  <span>Ocupadas: {rooms.filter((r) => r.status === "occupied").length}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Badge variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0" />
-                  <span>Disponibles: {rooms.filter((r) => r.status === "available").length}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Badge variant="outline" className="bg-amber-500 border-0 h-2 w-2 p-0" />
-                  <span>Mantenimiento: {rooms.filter((r) => r.status === "maintenance").length}</span>
-                </div>
-              </div>
-            </CardFooter>
           </Card>
         </main>
       </div>
@@ -656,7 +836,7 @@ export default function RoomsAdminPage() {
                     ) : (
                       typeRooms.map(tr => (
                         <SelectItem key={tr.id} value={String(tr.id)}>
-                          {tr.description} (${tr.price.toFixed(2)})
+                          {tr.description} (${tr.price ? tr.price.toFixed(2) : '0.00'})
                         </SelectItem>
                       ))
                     )}
@@ -773,8 +953,12 @@ export default function RoomsAdminPage() {
                     id="price"
                     type="number"
                     min="0"
+                    step="0.01"
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: Number.parseInt(e.target.value) })}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      setFormData({ ...formData, price: value });
+                    }}
                   />
                 </div>
               </div>
@@ -835,45 +1019,92 @@ export default function RoomsAdminPage() {
 
       {/* Dialog para crear tipo de habitación */}
       <Dialog open={isTypeRoomDialogOpen} onOpenChange={setIsTypeRoomDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Nuevo Tipo de Habitación</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              Nuevo Tipo de Habitación
+            </DialogTitle>
             <DialogDescription>
-              Defina los detalles para el nuevo tipo de habitación.
+              Defina los detalles para el nuevo tipo de habitación. Este tipo podrá ser usado para crear habitaciones específicas.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Input
-                  id="description"
-                  value={newTypeRoomData.description}
-                  onChange={(e) => setNewTypeRoomData({ ...newTypeRoomData, description: e.target.value })}
-                  placeholder="Ej: Habitación Doble, Suite Presidencial"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="price">Precio por noche ($)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  min="0"
-                  value={newTypeRoomData.price}
-                  onChange={(e) => setNewTypeRoomData({ ...newTypeRoomData, price: Number.parseInt(e.target.value) })}
-                />
-              </div>
+          <div className="grid gap-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium">
+                Descripción *
+              </Label>
+              <Input
+                id="description"
+                value={newTypeRoomData.description}
+                onChange={(e) => setNewTypeRoomData({ ...newTypeRoomData, description: e.target.value })}
+                placeholder="Ej: Habitación Doble, Suite Presidencial, Habitación Individual"
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Ingrese una descripción clara del tipo de habitación
+              </p>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="typeroom-price" className="text-sm font-medium">
+                Precio por noche (USD) *
+              </Label>
+              <Input
+                id="typeroom-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={newTypeRoomData.price}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0;
+                  setNewTypeRoomData({ ...newTypeRoomData, price: value });
+                }}
+                placeholder="0.00"
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Precio base por noche para este tipo de habitación
+              </p>
+            </div>
+
+            {selectedHotel && (
+              <div className="p-3 bg-muted/50 rounded-lg border">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Hotel seleccionado:
+                </p>
+                <p className="text-sm font-semibold">{selectedHotel.name}</p>
+              </div>
+            )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTypeRoomDialogOpen(false)}>
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsTypeRoomDialogOpen(false);
+                setNewTypeRoomData({ description: "", price: 0 });
+              }}
+            >
               Cancelar
             </Button>
-            <Button onClick={handleCreateTypeRoom}>
-              Crear Tipo de Habitación
+            <Button 
+              onClick={handleCreateTypeRoom}
+              disabled={!newTypeRoomData.description.trim() || newTypeRoomData.price <= 0 || isCreatingTypeRoom}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isCreatingTypeRoom ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Creando...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear Tipo de Habitación
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -42,6 +42,8 @@ export const API_CONFIG = {
     },
     TYPEROOM: {
       CREATE: "/type-room/create-type-room",
+      GET_BY_ID: "/type-room/get-type-room-by-id",
+      GET_ALL: "/type-room/get-all-type-rooms",
       GET_BY_HOTEL: "/type-room/hotel/{hotelId}",
     },
     SUPPLY_REQUEST: {

@@ -43,15 +43,43 @@ export async function createTypeRoom(
 	}
 }
 
-export async function getTypeRoomsByHotel(
+export async function getTypeRoomById(
+	id: number,
+	token: string,
+): Promise<ApiResult<TypeRoom>> {
+	try {
+		const url = buildApiUrl(API_CONFIG.ENDPOINTS.TYPEROOM.GET_BY_ID);
+		const response = await fetch(`${url}?id=${id}`, {
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${token}`,
+			},
+		});
+		if (!response.ok) {
+			if (response.status === 404) {
+				return { success: false, message: "Tipo de habitación no encontrado" };
+			}
+			const errorText = await response.text();
+			return { success: false, message: errorText || `Error ${response.status}` };
+		}
+		const data = await response.json();
+		return { success: true, data };
+	} catch (error: any) {
+		return {
+			success: false,
+			message: error.message || "Error al obtener el tipo de habitación.",
+		};
+	}
+}
+
+export async function getAllTypeRooms(
 	hotelId: number,
 	token: string,
 ): Promise<ApiResult<TypeRoom[]>> {
 	try {
-		const url = buildApiUrl(
-			API_CONFIG.ENDPOINTS.TYPEROOM.GET_BY_HOTEL.replace("{hotelId}", String(hotelId)),
-		);
-		const response = await fetch(url, {
+		const url = buildApiUrl(API_CONFIG.ENDPOINTS.TYPEROOM.GET_ALL);
+		const response = await fetch(`${url}?hotelid=${hotelId}`, {
 			method: "GET",
 			headers: {
 				"Content-Type": "application/json",
@@ -73,4 +101,11 @@ export async function getTypeRoomsByHotel(
 			message: error.message || "Error al obtener los tipos de habitación.",
 		};
 	}
+}
+
+export async function getTypeRoomsByHotel(
+	hotelId: number,
+	token: string,
+): Promise<ApiResult<TypeRoom[]>> {
+	return getAllTypeRooms(hotelId, token);
 } 
