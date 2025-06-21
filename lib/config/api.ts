@@ -35,9 +35,9 @@ export const API_CONFIG = {
       GET_BY_ID: "/supply-request/{id}",
       GET_BY_PAYMENT_OWNER: "/supply-request/paymentowner/{paymentOwnerId}",
       GET_BY_SUPPLY: "/supply-request/supply/{supplyId}",
-    },
-    ROOMS: {
+    },    ROOMS: {
       CREATE: "/room/create-room",
+      UPDATE: "/room/update-room",
       UPDATE_STATE: "/room/update-room-state", 
       GET_BY_ID: "/room/get-room-by-id",
       GET_BY_STATE: "/room/get-room-by-state",

@@ -217,3 +217,46 @@ export async function updateRoomState(id: number, state: string, token: string):
     };
   }
 }
+
+export async function updateRoom(id: number, room: Partial<Room>, token: string): Promise<ApiResult<Room>> {
+  try {
+    // Primero intentamos con el endpoint de actualización de estado si solo cambia el estado
+    if (Object.keys(room).length === 1 && room.state) {
+      return await updateRoomState(id, room.state, token);
+    }
+
+    // Para actualizaciones completas, usamos el endpoint de actualización general
+    const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.ROOMS.UPDATE), {
+      method: "PUT",
+      headers: { 
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id, ...room })
+    });
+    
+    if (!response.ok) {
+      // Si el endpoint no existe, intentamos solo actualizar el estado
+      if (response.status === 404 || response.status === 405) {
+        return { 
+          success: false, 
+          message: "La función de actualización completa no está disponible en la API. Solo se puede actualizar el estado." 
+        };
+      }
+      
+      const errorText = await response.text();
+      return { 
+        success: false, 
+        message: errorText || `Error HTTP ${response.status}: ${response.statusText}` 
+      };
+    }
+    
+    const data = await response.json();
+    return { success: true, data };
+  } catch (error: any) {
+    return { 
+      success: false, 
+      message: error.message || 'Error desconocido al actualizar la habitación' 
+    };
+  }
+}

@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -28,10 +28,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-mobile"
 import { toast } from "sonner"
-import { getAllRooms, createRoom, updateRoomState, Room } from "@/lib/services/rooms-service"
+import { getAllRooms, createRoom, updateRoomState, updateRoom, Room } from "@/lib/services/rooms-service"
 
 type RoomStatus = "occupied" | "vacant" | "maintenance"
 
@@ -239,7 +240,6 @@ export default function RoomsAdminPage() {
       }
     }
   }
-
   const handleSaveRoom = async () => {
     try {
       const token = localStorage.getItem('auth_token');
@@ -269,9 +269,61 @@ export default function RoomsAdminPage() {
           toast.error(result.message || "Error al crear la habitación");
         }
       } else if (currentRoom) {
-        // Nota: La función de actualizar no está completamente implementada
-        toast.error("La función de editar no está disponible temporalmente");
-        // Aquí iría la lógica de actualización usando updateRoomState
+        // Editar habitación existente
+        const roomUpdates: Partial<Room> = {
+          room_number: formData.name,
+          type: formData.type,
+          capacity: formData.capacity,
+          price: formData.price,
+          state: formData.status,
+          floor: formData.floor,
+          devices: formData.devices,
+        };
+
+        const result = await updateRoom(currentRoom.id, roomUpdates, token);
+        if (result.success) {
+          // Actualizar la habitación en el estado local
+          const updatedRooms = rooms.map(room => 
+            room.id === currentRoom.id 
+              ? { ...room, 
+                  name: formData.name,
+                  type: formData.type,
+                  capacity: formData.capacity,
+                  price: formData.price,
+                  status: formData.status,
+                  floor: formData.floor,
+                  devices: formData.devices,
+                  notes: formData.notes,
+                  lastCleaned: formData.lastCleaned
+                }
+              : room
+          );
+          setRooms(updatedRooms);
+          toast.success("Habitación actualizada correctamente");
+        } else {
+          // Si la actualización completa no está disponible, intentar solo actualizar el estado
+          if (result.message?.includes("función de actualización completa no está disponible")) {
+            if (formData.status !== currentRoom.status) {
+              const stateResult = await updateRoomState(currentRoom.id, formData.status, token);
+              if (stateResult.success) {
+                const updatedRooms = rooms.map(room => 
+                  room.id === currentRoom.id 
+                    ? { ...room, status: formData.status }
+                    : room
+                );
+                setRooms(updatedRooms);
+                toast.success("Estado de la habitación actualizado correctamente");
+                toast.info("Nota: Solo se pudo actualizar el estado. Otras modificaciones requieren soporte adicional de la API.");
+              } else {
+                toast.error(stateResult.message || "Error al actualizar el estado de la habitación");
+              }
+            } else {
+              toast.warning("No se pueden guardar los cambios. La API solo permite actualizar el estado de la habitación.");
+            }
+          } else {
+            toast.error(result.message || "Error al actualizar la habitación");
+          }
+        }
       }
 
       setIsEditDialogOpen(false);
@@ -318,6 +370,31 @@ export default function RoomsAdminPage() {
   const getUniqueFloors = () => {
     const floors = [...new Set(rooms.map((room) => room.floor))].filter(floor => floor !== undefined).sort((a, b) => (a || 0) - (b || 0))
     return floors as number[]
+  }
+
+  const handleQuickStatusChange = async (roomId: number, newStatus: RoomStatus) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        toast.error("No hay token de autenticación");
+        return;
+      }
+
+      const result = await updateRoomState(roomId, newStatus, token);
+      if (result.success) {
+        // Actualizar el estado local
+        const updatedRooms = rooms.map(room => 
+          room.id === roomId ? { ...room, status: newStatus } : room
+        );
+        setRooms(updatedRooms);
+        toast.success(`Estado de la habitación cambiado a ${statusConfig[newStatus].label}`);
+      } else {
+        toast.error(result.message || "Error al cambiar el estado de la habitación");
+      }
+    } catch (error: any) {
+      console.error("Error al cambiar estado:", error);
+      toast.error("Error al cambiar el estado de la habitación");
+    }
   }
 
   return (
@@ -440,14 +517,32 @@ export default function RoomsAdminPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => router.push(`/?room=${room.id}`)}>
-                                  <Home className="h-4 w-4 mr-2" />
-                                  Ver Detalles
-                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleEditRoom(room)}>
                                   <Edit className="h-4 w-4 mr-2" />
-                                  Editar
+                                  Editar habitación
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
+                                <DropdownMenuItem 
+                                  onClick={() => handleQuickStatusChange(room.id, "vacant")}
+                                  disabled={room.status === "vacant"}
+                                >
+                                  <Badge variant="outline" className="bg-sky-500 border-0 h-2 w-2 p-0 mr-2" />
+                                  Libre
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleQuickStatusChange(room.id, "occupied")}
+                                  disabled={room.status === "occupied"}
+                                >
+                                  <Badge variant="outline" className="bg-emerald-500 border-0 h-2 w-2 p-0 mr-2" />
+                                  Ocupada
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleQuickStatusChange(room.id, "maintenance")}
+                                  disabled={room.status === "maintenance"}
+                                >
+                                  <Badge variant="outline" className="bg-amber-500 border-0 h-2 w-2 p-0 mr-2" />
+                                  Mantenimiento
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -614,14 +709,14 @@ export default function RoomsAdminPage() {
                 value={formData.lastCleaned}
                 onChange={(e) => setFormData({ ...formData, lastCleaned: e.target.value })}
               />
-            </div>
-
-            <div className="space-y-2">
+            </div>            <div className="space-y-2">
               <Label htmlFor="notes">Notas</Label>
-              <Input
+              <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Notas adicionales sobre la habitación..."
+                rows={3}
               />
             </div>
           </div>
