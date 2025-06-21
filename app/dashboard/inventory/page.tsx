@@ -1,59 +1,200 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Inventory } from "@/types/interfaces";
-import { createClient } from "@/utils/supabase/client";
-import { deleteInventoryItem, updateInventoryItem } from "./service/inventory-service";
+import { Supply, Provider } from "@/types/interfaces";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, PlusCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/hooks/use-auth";
 
 import { FilterBar } from "./components/FilterBar";
 import { InventoryTable } from "./components/InventoryTable";
 import { StatsPanel } from "./components/StatsPanel";
 import { ItemFormDialog } from "./dialogs/ItemFormDialog";
 import { toast } from "sonner";
+import { getAllSupplies, createSupply, updateSupply } from "@/lib/services/supply-service";
+import { getAllProviders } from "@/lib/services/providers-service";
+
+// Mapeo de estados a etiquetas legibles
+const stateLabels: Record<string, string> = {
+  "active": "Activo",
+  "inactive": "Inactivo",
+  "discontinued": "Descontinuado",
+  "pending": "Pendiente",
+  "out_of_stock": "Sin stock"
+};
+
+// Función para convertir Supply a formato compatible con la UI existente
+const convertSupplyToInventory = (supply: Supply) => {
+  if (!supply) {
+    console.warn("Supply undefined al convertir a formato de inventario");
+    return {
+      id: 0,
+      name: "Artículo desconocido",
+      type: "desconocido",
+      unit_price: 0,
+      stock: 0
+    };
+  }
+  
+  // Validar que los valores sean del tipo correcto
+  const id = supply.id || 0;
+  const name = supply.name || "Sin nombre";
+  // Asegurarse de que el estado sea reconocido
+  const state = supply.state && typeof supply.state === "string" ? supply.state : "active";
+  // Usar la etiqueta legible si existe, o el estado crudo si no
+  const type = stateLabels[state] || state;
+  const price = typeof supply.price === "number" ? supply.price : 0;
+  const stock = typeof supply.stock === "number" ? supply.stock : 0;
+  
+  return {
+    id,
+    name,
+    type,
+    unit_price: price,
+    stock
+  };
+};
+
+// Función para convertir datos de la UI a Supply
+const convertInventoryToSupply = (item: any, user: any = null): Omit<Supply, 'id'> => {
+  // Simplificar y usar valores que probablemente funcionen
+  const supplyData = {
+    providerId: Number(item.providerId || 1), // Ahora viene del formulario
+    hotelId: 1,    // Valor fijo simple
+    name: String(item.name || '').trim(),
+    price: Number(item.unit_price || item.price || 0),
+    stock: Number(item.stock || 0),
+    state: String(item.state || "active") // Ahora viene del formulario
+  };
+  
+  // Validar que todos los campos requeridos estén presentes
+  if (!supplyData.name) {
+    throw new Error('El nombre es requerido');
+  }
+  
+  console.log('Converting to supply data:', supplyData); // Debug log
+  return supplyData;
+};
+
+// Estados disponibles para los suministros
+const SUPPLY_STATES = [
+  { value: "active", label: "Activo" },
+  { value: "inactive", label: "Inactivo" },
+  { value: "discontinued", label: "Descontinuado" },
+  { value: "pending", label: "Pendiente" },
+  { value: "out_of_stock", label: "Sin stock" }
+];
 
 export default function InventoryPage() {
-  const [inventory, setInventory] = useState<Inventory[]>([]);
+  const { user } = useAuth();
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterStock, setFilterStock] = useState("");
-  const [newItem, setNewItem] = useState<Partial<Inventory & { customType?: string }>>({
+  const [newItem, setNewItem] = useState<any>({
     name: "",
     type: "",
     unit_price: 0,
-    stock: 0
+    stock: 0,
+    providerId: "",
+    state: "active"
   });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [itemToEdit, setItemToEdit] = useState<Inventory & { customType?: string } | null>(null);
+  const [itemToEdit, setItemToEdit] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('inventory')
-          .select('*')
-          .order('id', { ascending: true });
-        
-        if (error) throw error;
-        
-        setInventory(data || []);
-      } catch (error: any) {
-        console.error("Error al cargar inventario:", error.message);
-        toast("No se pudo cargar el inventario. " + error.message);
-      } finally {
-        setIsLoading(false);
+  // Obtener suministros del backend
+  const fetchInventory = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        toast.error("No hay sesión activa. Por favor, inicie sesión de nuevo.");
+        return;
       }
+
+      // Obtener el hotelId de localStorage o usar 1 por defecto
+      const hotelId = parseInt(localStorage.getItem('hotel_id') || '1');
+      console.log(`Cargando inventario para el hotel ID: ${hotelId}`);
+      
+      const result = await getAllSupplies(token);
+      if (result.success && result.data) {
+        try {
+          // Validar que result.data sea un array
+          if (!Array.isArray(result.data)) {
+            console.error("La API no devolvió un array para suministros:", result.data);
+            toast.error("Formato de datos inválido recibido del servidor");
+            setInventory([]);
+            return;
+          }
+          
+          // Convertir los datos de Supply al formato esperado por la UI
+          const convertedData = result.data.map(item => {
+            try {
+              return convertSupplyToInventory(item);
+            } catch (err) {
+              console.error("Error al convertir elemento de inventario:", err, item);
+              // Devolver un elemento con valores predeterminados si hay error
+              return {
+                id: item?.id || 0,
+                name: item?.name || "Error en el artículo",
+                type: "error",
+                unit_price: 0,
+                stock: 0
+              };
+            }
+          });
+          
+          setInventory(convertedData);
+        } catch (err) {
+          console.error("Error al procesar datos de inventario:", err);
+          toast.error("Error al procesar los datos del inventario");
+          setInventory([]);
+        }
+      } else {
+        toast.error(result.message || "No se pudo obtener el inventario");
+        setInventory([]);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar el inventario:", error);
+      toast.error("Error al cargar el inventario");
+      setInventory([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Obtener proveedores del backend
+  const fetchProviders = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        return;
+      }
+
+      const result = await getAllProviders(token);
+      if (result.success && result.data) {
+        setProviders(result.data);
+      } else {
+        console.error("Error al cargar proveedores:", result.message);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar proveedores:", error.message);
+    }
+  };
+  useEffect(() => {
+    const loadData = async () => {
+      await Promise.all([
+        fetchInventory(),
+        fetchProviders()
+      ]);
     };
     
-    fetchData();
+    loadData();
   }, []);
   
   // Extraer todos los tipos únicos para el filtro
@@ -77,60 +218,74 @@ export default function InventoryPage() {
         
       return matchesSearch && matchesType && matchesStock;
     });
-  }, [inventory, searchTerm, filterType, filterStock]);
-
-  // Añadir nuevo elemento al inventario
+  }, [inventory, searchTerm, filterType, filterStock]);  // Añadir nuevo elemento al inventario
   const handleAddItem = async () => {
     if (!newItem.name || (!newItem.type || (newItem.type === "otro" && !newItem.customType))) return;
+    if (!newItem.providerId) {
+      toast.error("Debe seleccionar un proveedor");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const finalType = newItem.type === "otro" ? newItem.customType : newItem.type;
-      const itemToAdd = {
-        name: newItem.name,
-        type: finalType as string,
-        unit_price: newItem.unit_price || 0,
-        stock: newItem.stock || 0
-      };
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        toast.error("No hay token de autenticación");
+        return;
+      }      const finalType = newItem.type === "otro" ? newItem.customType : newItem.type;
       
-      // Este servicio ya existe
-      const result = await import("./service/inventory-service").then(mod => {
-        return mod.createInventoryItem(itemToAdd);
-      });
-      
-      if (!result.success) {
-        throw new Error(result.message);
+      let supplyData;
+      try {
+        supplyData = convertInventoryToSupply({
+          ...newItem,
+          type: finalType
+        }, user);
+      } catch (conversionError: any) {
+        toast.error(conversionError.message);
+        return;
       }
       
-      // Refrescar inventario
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .order('id', { ascending: true });
-        
-      if (error) throw error;
+      // Validar que los datos requeridos estén presentes
+      if (!supplyData.name) {
+        toast.error("El nombre es requerido");
+        return;
+      }
+      if (supplyData.price < 0) {
+        toast.error("El precio no puede ser negativo");
+        return;
+      }
+      if (supplyData.stock < 0) {
+        toast.error("El stock no puede ser negativo");
+        return;
+      }
       
-      setInventory(data || []);
-      setNewItem({
-        name: "",
-        type: "",
-        unit_price: 0,
-        stock: 0
-      });
-      setIsAddDialogOpen(false);
+      console.log('Sending supply data to API:', supplyData); // Debug log
       
-      toast("El elemento ha sido añadido correctamente");
+      const result = await createSupply(supplyData, token);
+      
+      if (result.success) {
+        await fetchInventory();        setNewItem({
+          name: "",
+          type: "",
+          unit_price: 0,
+          stock: 0,
+          providerId: "",
+          state: "active"
+        });
+        setIsAddDialogOpen(false);
+        toast.success("El elemento ha sido añadido correctamente");
+      } else {
+        toast.error(result.message || "No se pudo añadir el elemento");
+      }
     } catch (error: any) {
-      console.error("Error al añadir elemento:", error.message);
-      toast( "No se pudo añadir el elemento. " + error.message);
+      toast.error("Error al añadir el elemento: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
   
   // Abrir diálogo de edición
-  const handleOpenEditDialog = (item: Inventory) => {
+  const handleOpenEditDialog = (item: any) => {
     setItemToEdit({...item});
     setIsEditDialogOpen(true);
   };
@@ -141,37 +296,32 @@ export default function InventoryPage() {
     
     setIsSubmitting(true);
     try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        toast.error("No hay token de autenticación");
+        return;
+      }
+
       const finalType = itemToEdit.type === "otro" ? itemToEdit.customType : itemToEdit.type;
-      const itemToUpdate = {
-        ...itemToEdit,
-        type: finalType as string
+      const supplyData = {
+        name: itemToEdit.name,
+        price: itemToEdit.unit_price || itemToEdit.price,
+        stock: itemToEdit.stock,
+        state: finalType
       };
       
-      delete itemToUpdate.customType;
+      const result = await updateSupply(itemToEdit.id, supplyData, token);
       
-      const result = await updateInventoryItem(itemToEdit.id, itemToUpdate);
-      
-      if (!result.success) {
-        throw new Error(result.message);
+      if (result.success) {
+        await fetchInventory();
+        setIsEditDialogOpen(false);
+        setItemToEdit(null);
+        toast.success("El elemento ha sido actualizado correctamente");
+      } else {
+        toast.error(result.message || "No se pudo actualizar el elemento");
       }
-      
-      // Refrescar inventario
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .order('id', { ascending: true });
-        
-      if (error) throw error;
-      
-      setInventory(data || []);
-      setIsEditDialogOpen(false);
-      setItemToEdit(null);
-      
-      toast("El elemento ha sido actualizado correctamente");
     } catch (error: any) {
-      console.error("Error al actualizar elemento:", error.message);
-      toast("No se pudo actualizar el elemento. " + error.message);
+      toast.error("Error al actualizar el elemento: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -180,19 +330,24 @@ export default function InventoryPage() {
   // Eliminar ítem
   const handleDeleteItem = async (id: number) => {
     try {
-      const result = await deleteInventoryItem(id);
-      
-      if (!result.success) {
-        throw new Error(result.message);
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        toast.error("No hay token de autenticación");
+        return;
       }
+
+      // Nota: Como no hay endpoint de DELETE para Supply, actualizamos el estado a 'deleted'
+      const result = await updateSupply(id, { state: 'deleted' }, token);
       
-      // Actualizar el estado local
-      setInventory(inventory.filter(item => item.id !== id));
-      
-      toast("El elemento ha sido eliminado correctamente");
+      if (result.success) {
+        // Actualizar el estado local filtrando el elemento eliminado
+        setInventory(inventory.filter(item => item.id !== id));
+        toast.success("El elemento ha sido eliminado correctamente");
+      } else {
+        toast.error(result.message || "No se pudo eliminar el elemento");
+      }
     } catch (error: any) {
-      console.error("Error al eliminar elemento:", error.message);
-      toast("No se pudo eliminar el elemento. " + error.message);
+      toast.error("Error al eliminar el elemento: " + error.message);
     }
   };
 
@@ -291,8 +446,7 @@ export default function InventoryPage() {
           />
         </TabsContent>
       </Tabs>
-      
-      {/* Diálogo para añadir item */}
+        {/* Diálogo para añadir item */}
       <ItemFormDialog
         title="Añadir Nuevo Item"
         description="Ingresa los detalles del nuevo producto para el inventario"
@@ -303,6 +457,8 @@ export default function InventoryPage() {
         onSubmit={handleAddItem}
         isSubmitting={isSubmitting}
         availableTypes={itemTypes}
+        providers={providers}
+        supplyStates={SUPPLY_STATES}
       />
       
       {/* Diálogo para editar item */}
@@ -318,6 +474,8 @@ export default function InventoryPage() {
           isSubmitting={isSubmitting}
           buttonText="Guardar Cambios"
           availableTypes={itemTypes}
+          providers={providers}
+          supplyStates={SUPPLY_STATES}
         />
       )}
     </div>

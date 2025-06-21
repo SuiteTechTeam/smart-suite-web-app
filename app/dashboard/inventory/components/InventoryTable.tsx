@@ -60,31 +60,32 @@ export const InventoryTable = ({
           </TableHeader>
           <TableBody>
             {filteredInventory.length > 0 ? (
-              filteredInventory.map(item => (
-                <TableRow key={item.id} className="hover:bg-muted/50">
-                  <TableCell className="font-medium">{item.id}</TableCell>
-                  <TableCell>{item.name}</TableCell>
+              filteredInventory.map(item => (                <TableRow key={item.id || Math.random()} className="hover:bg-muted/50">
+                  <TableCell className="font-medium">{item.id || "N/A"}</TableCell>
+                  <TableCell>{item.name || "Sin nombre"}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="font-normal">
-                      {item.type}
+                      {item.type || "Desconocido"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    ${item.unit_price.toFixed(2)}
+                    S/.{typeof item.unit_price === 'number' ? item.unit_price.toFixed(2) : "0.00"}
                   </TableCell>
                   <TableCell className="text-right">
                     <Badge className={
-                      item.stock < 10 
+                      !item.stock || item.stock < 10 
                         ? "bg-destructive hover:bg-destructive/90" 
                         : item.stock > 30 
                           ? "bg-green-500 hover:bg-green-600" 
                           : "bg-amber-500 hover:bg-amber-600"
                     }>
-                      {item.stock} {item.stock === 1 ? "unidad" : "unidades"}
+                      {item.stock || 0} {(!item.stock || item.stock === 1) ? "unidad" : "unidades"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    ${(item.unit_price * item.stock).toFixed(2)}
+                    S/.{typeof item.unit_price === 'number' && typeof item.stock === 'number' 
+                      ? (item.unit_price * item.stock).toFixed(2) 
+                      : "0.00"}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -134,7 +135,7 @@ export const InventoryTable = ({
           Productos totales: <strong>{inventory.length}</strong>
         </p>
         <p className="text-sm text-muted-foreground">
-          Valor total: <strong>${totalValue.toFixed(2)}</strong>
+          Valor total: <strong>S/.{totalValue.toFixed(2)}</strong>
         </p>
       </CardFooter>
     </Card>

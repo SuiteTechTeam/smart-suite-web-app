@@ -6,6 +6,34 @@ export interface Inventory {
   stock: number;
 }
 
+export interface Supply {
+  id: number;
+  providerId: number;
+  hotelId: number;
+  name: string;
+  price: number;
+  stock: number;
+  state: string;
+}
+
+export interface SupplyRequest {
+  id: number;
+  paymentOwnerId: number;
+  supplyId: number;
+  count: number;
+  amount: number;
+}
+
+export interface Provider {
+  id: number;
+  name: string;
+  contact_name?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  state?: string;
+}
+
 export interface Room {
   id: number;
   customer_id: number;
@@ -68,11 +96,6 @@ export interface Profile {
   phone_number: string | null;
   address: string | null;
   district: number | null;
-}
-
-export interface SupabaseResponse<T> {
-  data: T[] | null;
-  error: Error | null;
 }
 
 // Interfaces para las acciones de servidor

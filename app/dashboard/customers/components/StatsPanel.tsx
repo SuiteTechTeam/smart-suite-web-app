@@ -1,50 +1,28 @@
-import { Customer } from "@/lib/models";
-import { StatCard } from "./StatCard";
-import { Users, UserCheck, UserMinus, UserCog } from "lucide-react";
+import { StatCard, type StatCardProps } from "./StatCard";
 
 interface StatsPanelProps {
-  customers: Customer[];
+  stats: (Omit<StatCardProps, 'description'> & { description?: string })[];
 }
 
-export const StatsPanel = ({ customers }: StatsPanelProps) => {
-  // Calcular estadísticas
-  const totalCustomers = customers.length;
-  const activeCustomers = customers.filter(customer => customer.state === "activo").length;
-  const inactiveCustomers = customers.filter(customer => customer.state === "inactivo").length;
-  const pendingCustomers = customers.filter(customer => customer.state === "pendiente").length;
-  
-  // Calcular porcentajes
-  const activePercentage = totalCustomers > 0 ? Math.round((activeCustomers / totalCustomers) * 100) : 0;
-  const inactivePercentage = totalCustomers > 0 ? Math.round((inactiveCustomers / totalCustomers) * 100) : 0;
-  
+export const StatsPanel = ({ stats }: StatsPanelProps) => {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <StatCard
-        title="Total de Clientes"
-        value={totalCustomers}
-        icon={Users}
-        description="Número total de clientes registrados"
-      />
-      <StatCard
-        title="Clientes Activos"
-        value={activeCustomers}
-        description={`${activePercentage}% del total de clientes`}
-        icon={UserCheck}
-        iconColor="text-green-500"
-      />
-      <StatCard
-        title="Clientes Inactivos"
-        value={inactiveCustomers}
-        description={`${inactivePercentage}% del total de clientes`}
-        icon={UserMinus}
-        iconColor="text-destructive"
-      />
-      <StatCard
-        title="Clientes Pendientes"
-        value={pendingCustomers}
-        icon={UserCog}
-        iconColor="text-amber-500"
-      />
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {stats.map((stat, index) => (
+        <StatCard
+          key={`${stat.title}-${index}`}
+          title={stat.title}
+          value={stat.value}
+          icon={stat.icon}
+          description={stat.description || `${typeof stat.value === 'string' ? stat.value : stat.value.toString()} ${stat.title.toLowerCase()}`}
+          iconColor={stat.iconColor || "text-primary"}
+          change={stat.change}
+          trend={stat.trend}
+        />
+      ))}
     </div>
   );
 };
+
+StatsPanel.displayName = "StatsPanel";
+export type { StatsPanelProps };
+export default StatsPanel;

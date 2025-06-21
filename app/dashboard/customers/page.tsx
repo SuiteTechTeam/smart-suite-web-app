@@ -1,295 +1,161 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, PlusCircle, AlertCircle } from "lucide-react";
+import { PlusCircle, Users, CircleDollarSign, Wallet, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/hooks/use-auth";
+import {
+	getAllPayments,
+	type PaymentCustomer,
+} from "@/lib/services/customer-service";
 
-// Componentes
-import { FilterBar } from "./components/FilterBar";
-import { CustomerTable } from "./components/CustomerTable";
-import { StatsPanel } from "./components/StatsPanel";
-import { CustomerFormDialog } from "./dialogs/CustomerFormDialog";
-import { Customer } from "@/lib/models";
-
-// Servicios
-import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from "@/app/dashboard/customers/service/customer-service";
-
-// Toast provisional
-const toast = (props: { title?: string; description?: string; variant?: "default" | "destructive" }) => {
-  console.log(`Toast: ${props.title} - ${props.description}`);
-};
+import CustomerTable from "./components/CustomerTable";
+import FilterBar from "./components/FilterBar";
+import StatsPanel from "./components/StatsPanel";
+import AddPaymentDialog from "./modal/add-payment-dialogs";
+import EditPaymentDialog from "./modal/edit-payment-dialog";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterState, setFilterState] = useState("all");
-  const [newCustomer, setNewCustomer] = useState<Partial<Customer>>({
-    name: "",
-    contact_name: "",
-    phone: "",
-    email: "",
-    address: "",
-    state: "activo"
-  });
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Cargar datos de clientes
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const result = await getCustomers();
-        
-        if (!result.success) {
-          throw new Error(result.message);
-        }
-        
-        setCustomers(result.data || []);
-      } catch (error: any) {
-        console.error("Error al cargar clientes:", error.message);
-        toast({
-          title: "Error",
-          description: "No se pudo cargar la lista de clientes. " + error.message,
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
-  
-  // Extraer todos los estados únicos para el filtro
-  const customerStates = useMemo(() => {
-    return [...new Set(customers.map(customer => customer.state))].sort();
-  }, [customers]);
-  
-  // Filtrar clientes por búsqueda y filtros
-  const filteredCustomers = useMemo(() => {
-    return customers.filter(customer => {
-      const matchesSearch = !searchTerm || 
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.contact_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.phone.includes(searchTerm);
-        
-      const matchesState = filterState === "all" || customer.state === filterState;
-        
-      return matchesSearch && matchesState;
-    });
-  }, [customers, searchTerm, filterState]);
+	const { user } = useAuth();
+	const [payments, setPayments] = useState<PaymentCustomer[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const [isFormOpen, setIsFormOpen] = useState(false);
+	const [selectedPayment, setSelectedPayment] = useState<PaymentCustomer | null>(
+		null,
+	);
 
-  // Añadir nuevo cliente
-  const handleAddCustomer = async () => {
-    if (!newCustomer.name || !newCustomer.contact_name || !newCustomer.phone) return;
+	const [filter, setFilter] = useState("");
 
-    setIsSubmitting(true);
-    try {
-      const result = await createCustomer({
-        name: newCustomer.name,
-        contact_name: newCustomer.contact_name,
-        phone: newCustomer.phone,
-        email: newCustomer.email || "",
-        address: newCustomer.address || "",
-        state: newCustomer.state || "activo"
-      });
+	const fetchPayments = async () => {
+		const token = localStorage.getItem("auth_token");
+		if (!token) {
+			setError("No se encontró el token de autenticación.");
+			setLoading(false);
+			return;
+		}
 
-      if (!result.success) {
-        throw new Error(result.message);
-      }
+		setLoading(true);
+		const result = await getAllPayments(token);
+		if (result.success) {
+			setPayments(result.data ?? []);
+		} else {
+			setError(result.message ?? "Error al cargar los pagos.");
+		}
+		setLoading(false);
+	};
 
-      setCustomers(prev => [...prev, result.data]);
-      setIsAddDialogOpen(false);
-      setNewCustomer({
-        name: "",
-        contact_name: "",
-        phone: "",
-        email: "",
-        address: "",
-        state: "activo"
-      });
+	useEffect(() => {
+		if (user) {
+			fetchPayments();
+		}
+	}, [user]);
 
-      toast({
-        title: "Cliente añadido",
-        description: `${result.data.name} ha sido añadido correctamente.`
-      });
-    } catch (error: any) {
-      console.error("Error al añadir cliente:", error.message);
-      toast({
-        title: "Error",
-        description: "No se pudo añadir el cliente. " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+	const handleNewPayment = () => {
+		setSelectedPayment(null);
+		setIsFormOpen(true);
+	};
 
-  // Editar cliente existente
-  const handleEditCustomer = async () => {
-    if (!customerToEdit || !customerToEdit.name || !customerToEdit.contact_name || !customerToEdit.phone) return;
+	const handleEditPayment = (payment: PaymentCustomer) => {
+		setSelectedPayment(payment);
+		setIsFormOpen(true);
+	};
 
-    setIsSubmitting(true);
-    try {
-      const result = await updateCustomer(customerToEdit.id, {
-        name: customerToEdit.name,
-        contact_name: customerToEdit.contact_name,
-        phone: customerToEdit.phone,
-        email: customerToEdit.email,
-        address: customerToEdit.address,
-        state: customerToEdit.state
-      });
+	const handleFormSuccess = () => {
+		setIsFormOpen(false);
+		fetchPayments(); // Recargar la lista de pagos
+	};
 
-      if (!result.success) {
-        throw new Error(result.message);
-      }
+	const filteredPayments = useMemo(() => {
+		if (!filter) return payments;
+		const lowercaseFilter = filter.toLowerCase();
+		return payments.filter(
+			p =>
+				p.guestId.toString().includes(lowercaseFilter) ||
+				p.id.toString().includes(lowercaseFilter) ||
+				(p.guest?.email && p.guest.email.toLowerCase().includes(lowercaseFilter)) ||
+				(p.guest?.name && p.guest.name.toLowerCase().includes(lowercaseFilter)) ||
+				(p.guest?.surname && p.guest.surname.toLowerCase().includes(lowercaseFilter)),
+		);
+	}, [payments, filter]);
 
-      setCustomers(prev => 
-        prev.map(customer => 
-          customer.id === customerToEdit.id ? result.data : customer
-        )
-      );
-      setIsEditDialogOpen(false);
-      setCustomerToEdit(null);
+	const totalRevenue = useMemo(() => {
+		return payments.reduce((sum, p) => sum + p.finalAmount, 0);
+	}, [payments]);
 
-      toast({
-        title: "Cliente actualizado",
-        description: `${result.data.name} ha sido actualizado correctamente.`
-      });
-    } catch (error: any) {
-      console.error("Error al actualizar cliente:", error.message);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el cliente. " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+	const stats = [
+		{ title: "Total de Pagos", value: payments.length.toString(), icon: Users },
+		{
+			title: "Ingresos Totales",
+			value: `S/.${totalRevenue.toLocaleString("es-ES", {
+				minimumFractionDigits: 2,
+			})}`,
+			icon: CircleDollarSign,
+		},
+		{ title: "Pago Promedio", value: `S/.${(payments.length > 0 ? totalRevenue / payments.length : 0).toFixed(2)}`, icon: Wallet },
+	];
 
-  // Eliminar cliente
-  const handleDeleteCustomer = async (id: number) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer.")) {
-      return;
-    }
+	return (
+		<main className="flex flex-1 flex-col gap-6 p-6 md:gap-8">
+			<div className="flex flex-col gap-1">
+				<div className="flex items-center">
+					<div className="flex items-center gap-2">
+						<div className="p-1.5 rounded-md bg-primary/10">
+							<LayoutDashboard className="h-5 w-5 text-primary" />
+						</div>
+						<h1 className="font-semibold text-xl md:text-2xl">
+							Pagos de Clientes
+						</h1>
+					</div>
+					<div className="ml-auto flex items-center gap-2">
+						<Button onClick={handleNewPayment} className="gap-1.5 shadow-sm">
+							<PlusCircle className="h-4 w-4" />
+							Nuevo Pago
+						</Button>
+					</div>
+				</div>
+				<p className="text-sm text-muted-foreground">
+					Gestiona los pagos de los huéspedes de tu hotel
+				</p>
+			</div>
 
-    try {
-      const result = await deleteCustomer(id);
+			<StatsPanel stats={stats} />
 
-      if (!result.success) {
-        throw new Error(result.message);
-      }
+			<div className="flex flex-col gap-6">
+				<Card className="border border-border/40 shadow-sm overflow-hidden">
+					<CardContent className="p-4">
+						<FilterBar
+							onFilterChange={setFilter}
+							placeholder="Buscar por ID, nombre, apellido o email del huésped..."
+						/>
+					</CardContent>
+				</Card>
+				
+				<CustomerTable
+					payments={filteredPayments}
+					onEdit={handleEditPayment}
+					loading={loading}
+					error={error}
+				/>
+			</div>
 
-      setCustomers(prev => prev.filter(customer => customer.id !== id));
-
-      toast({
-        title: "Cliente eliminado",
-        description: "El cliente ha sido eliminado correctamente."
-      });
-    } catch (error: any) {
-      console.error("Error al eliminar cliente:", error.message);
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el cliente. " + error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Resetear filtros
-  const resetFilters = () => {
-    setSearchTerm("");
-    setFilterState("all");
-  };
-
-  return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
-          <p className="text-muted-foreground">
-            Gestiona los clientes de tu negocio.
-          </p>
-        </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="gap-1">
-          <PlusCircle size={16} />
-          Nuevo Cliente
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2">Cargando clientes...</span>
-        </div>
-      ) : customers.length === 0 ? (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>No hay clientes</AlertTitle>
-          <AlertDescription>
-            No se encontraron clientes en el sistema. Añade tu primer cliente haciendo clic en el botón "Nuevo Cliente".
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <>
-          <FilterBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            filterState={filterState}
-            setFilterState={setFilterState}
-            customerStates={customerStates}
-          />
-
-          <div className="grid grid-cols-1 gap-6">
-            <CustomerTable
-              customers={customers}
-              filteredCustomers={filteredCustomers}
-              onEdit={(customer) => {
-                setCustomerToEdit(customer);
-                setIsEditDialogOpen(true);
-              }}
-              onDelete={handleDeleteCustomer}
-              resetFilters={resetFilters}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Diálogo para añadir nuevo cliente */}
-      <CustomerFormDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        title="Añadir nuevo cliente"
-        description="Completa el formulario para añadir un nuevo cliente al sistema."
-        customer={newCustomer}
-        setCustomer={setNewCustomer}
-        onSubmit={handleAddCustomer}
-        isSubmitting={isSubmitting}
-        submitLabel="Añadir cliente"
-      />
-
-      {/* Diálogo para editar cliente */}
-      {customerToEdit && (
-        <CustomerFormDialog
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          title="Editar cliente"
-          description="Actualiza la información del cliente."
-          customer={customerToEdit}
-          setCustomer={(customer) => setCustomerToEdit({...customerToEdit, ...customer})}
-          onSubmit={handleEditCustomer}
-          isSubmitting={isSubmitting}
-          submitLabel="Guardar cambios"
-        />
-      )}
-    </div>
-  );
+			<AddPaymentDialog
+				open={isFormOpen && !selectedPayment}
+				onOpenChange={(open) => {
+					if (!open) setIsFormOpen(false);
+				}}
+				onSuccess={handleFormSuccess}
+			/>
+			
+			<EditPaymentDialog
+				open={isFormOpen && !!selectedPayment}
+				onOpenChange={(open) => {
+					if (!open) setIsFormOpen(false);
+				}}
+				onSuccess={handleFormSuccess}
+				payment={selectedPayment}
+			/>
+		</main>
+	);
 }
