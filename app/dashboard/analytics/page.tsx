@@ -29,6 +29,7 @@ import { getAllRooms, type Room } from "@/lib/services/rooms-service";
 import { getAllIoTDevices, getNotificationsByRoom, type IoTDevice, type NotificationHistory } from "@/lib/services/iot-service";
 import { getAllSupplies } from "@/lib/services/supply-service";
 import { useAuth } from "@/hooks/use-auth";
+import { useHotel } from "@/contexts/HotelContext";
 
 // Interfaces para los datos calculados
 interface MonthlyMetrics {
@@ -109,9 +110,9 @@ export default function AnalyticsPage() {
   const [iotDevices, setIoTDevices] = useState<IoTDevice[]>([]);
   const [notifications, setNotifications] = useState<NotificationHistory[]>([]);
   const [supplies, setSupplies] = useState<any[]>([]);
-  
-  // Hook de autenticación
+    // Hook de autenticación y hotel
   const { user } = useAuth();
+  const { selectedHotel } = useHotel();
 
   // Función para calcular métricas basadas en datos reales
   const calculateMetrics = (): MonthlyMetrics => {
@@ -202,11 +203,13 @@ export default function AnalyticsPage() {
       avgResponseTime: Math.random() * 2 + 0.5 // Simulado - requeriría métricas adicionales
     }));
   };
-
   // Cargar datos de las APIs
   useEffect(() => {
     const loadData = async () => {
-      if (!user) return;
+      if (!user || !selectedHotel) {
+        setLoading(false);
+        return;
+      }
       
       setLoading(true);
       setError(null);
@@ -217,9 +220,9 @@ export default function AnalyticsPage() {
           throw new Error('No hay token de autenticación');
         }
 
-        // Cargar todas las APIs en paralelo
+        // Cargar todas las APIs en paralelo usando el hotel seleccionado
         const [roomsResult, iotResult, suppliesResult] = await Promise.all([
-          getAllRooms(token),
+          getAllRooms(token, selectedHotel.id),
           getAllIoTDevices(token),
           getAllSupplies(token)
         ]);
@@ -262,10 +265,8 @@ export default function AnalyticsPage() {
       } finally {
         setLoading(false);
       }
-    };
-
-    loadData();
-  }, [user, selectedMonth, selectedYear]);
+    };    loadData();
+  }, [user, selectedHotel, selectedMonth, selectedYear]); // Recargar cuando cambie el hotel
 
   // Calcular métricas con datos reales
   const monthlyMetrics = calculateMetrics();
@@ -308,14 +309,20 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="container max-w-7xl mx-auto p-6 space-y-6">
-      {/* Header */}
+    <div className="container max-w-7xl mx-auto p-6 space-y-6">      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">
-            Resumen mensual de métricas y rendimiento del hotel
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-muted-foreground">
+              Resumen mensual de métricas y rendimiento del hotel
+            </p>
+            {selectedHotel && (
+              <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded-md font-medium">
+                {selectedHotel.name}
+              </span>
+            )}
+          </div>
         </div>
         
         <div className="flex items-center gap-4">

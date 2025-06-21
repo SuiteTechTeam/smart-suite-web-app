@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { 
   Thermometer, 
   LightbulbOff, 
@@ -20,7 +27,17 @@ import {
   X,
   Search,
   ChevronLeft,
-  Loader2
+  Loader2,
+  Building2,
+  MapPin,
+  Star,
+  Users,
+  Bed,
+  Calendar,
+  MoreVertical,
+  Edit,
+  Eye,
+  Plus
 } from "lucide-react"
 import { getAllRooms, Room } from "@/lib/services/rooms-service"
 import { getAllIoTDevices, getRoomDevicesByRoom, IoTDevice, RoomDevice } from "@/lib/services/iot-service"
@@ -91,6 +108,7 @@ export default function DashboardPage() {
 	const [hotels, setHotels] = useState<Hotel[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isHotelFormOpen, setIsHotelFormOpen] = useState(false);
+	const [hotelStats, setHotelStats] = useState<Record<number, { rooms: number, occupancy: number }>>({});
 
   useEffect(() => {
 		const fetchHotels = async () => {
@@ -100,12 +118,16 @@ export default function DashboardPage() {
 					toast.error("Error de autenticación.");
 					setIsLoading(false);
           return;
-        }
-
-				try {
+        }				try {
 					const result = await getHotelsByOwner(Number(user.id), token);
 					if (result.success && result.data) {
 						setHotels(result.data);
+						
+						// Cargar estadísticas para cada hotel
+						result.data.forEach(hotel => {
+							fetchHotelStats(hotel.id, token);
+						});
+						
 						if (result.data.length === 0) {
 							setIsHotelFormOpen(true);
 						}
@@ -130,12 +152,47 @@ export default function DashboardPage() {
 		}
 	}, [user]);
 
+	// Función para obtener estadísticas básicas de cada hotel
+	const fetchHotelStats = async (hotelId: number, token: string) => {
+		try {
+			// Aquí podrías hacer llamadas a la API para obtener estadísticas reales
+			// Por ahora, simulamos datos
+			const mockStats = {
+				rooms: Math.floor(Math.random() * 50) + 10, // Entre 10 y 60 habitaciones
+				occupancy: Math.floor(Math.random() * 100), // Entre 0% y 100%
+			};
+			
+			setHotelStats(prev => ({
+				...prev,
+				[hotelId]: mockStats
+			}));
+		} catch (error) {
+			console.warn(`Error fetching stats for hotel ${hotelId}:`, error);
+		}
+	};
+
 	const handleHotelCreated = (newHotel: Hotel) => {
 		setHotels(prev => [...prev, newHotel]);
 		localStorage.setItem("selected_hotel_id", String(newHotel.id));
 		toast.info(
 			`Ahora ve a "Gestión del Hotel" para añadir tipos de habitación.`,
 		);
+	};
+
+	const handleSelectHotel = (hotel: Hotel) => {
+		localStorage.setItem("selected_hotel_id", String(hotel.id));
+		toast.success(`Hotel "${hotel.name}" seleccionado`);
+		// Aquí podrías redirigir a una página específica si lo deseas
+	};
+
+	const handleViewHotel = (hotel: Hotel) => {
+		// Redirigir a la vista detallada del hotel
+		window.location.href = `/dashboard/hotel/${hotel.id}`;
+	};
+
+	const handleEditHotel = (hotel: Hotel) => {
+		// Abrir modal de edición o redirigir
+		toast.info("Funcionalidad de edición en desarrollo");
 	};
 
 	if (isLoading) {
@@ -159,54 +216,203 @@ export default function DashboardPage() {
 			</Card>
 		);
   }
-
   return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
             <div>
-                <Card>
-                  <CardHeader>
-					<CardTitle>Dashboard del Propietario</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-					{hotels.length > 0 ? (
-						<div>
-							<h2 className="text-xl font-semibold mb-2">Mis Hoteles</h2>
-							<ul>
-								{hotels.map(hotel => (
-									<li key={hotel.id} className="p-2 border-b">
-										{hotel.name}
-									</li>
-								))}
-							</ul>
-						</div>
-					) : (
-						<div className="text-center p-4 border-2 border-dashed rounded-lg">
-							<h3 className="text-lg font-semibold">
-								¡Bienvenido a Smart Suite!
-							</h3>
-							<p className="text-muted-foreground mt-1">
-								Parece que aún no tienes hoteles registrados.
-							</p>
-							<Button
-								onClick={() => setIsHotelFormOpen(true)}
-								className="mt-4"
-							>
-								Crear Mi Primer Hotel
-							</Button>
-                    </div>
-					)}
-                  </CardContent>
-                </Card>
-
-			{user && (
-				<HotelFormDialog
-					open={isHotelFormOpen}
-					onOpenChange={setIsHotelFormOpen}
-					onHotelCreated={handleHotelCreated}
-					ownerId={Number(user.id)}
-				/>
-			)}
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-6 w-6 text-primary" />
+                Dashboard del Propietario
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Gestiona tus hoteles y propiedades desde un solo lugar
+              </CardDescription>
+            </div>
+            <Button 
+              onClick={() => setIsHotelFormOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Agregar Hotel
+            </Button>
           </div>
-	);
+        </CardHeader>
+        
+        <CardContent>
+          {hotels.length > 0 ? (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold">Mis Hoteles</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {hotels.length} {hotels.length === 1 ? 'hotel registrado' : 'hoteles registrados'}
+                  </p>
+                </div>
+                <Badge variant="secondary" className="px-3 py-1">
+                  {hotels.length} propiedades
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {hotels.map(hotel => (
+                  <Card key={hotel.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="absolute top-4 right-4 z-10">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="icon" className="h-8 w-8 bg-white/80 backdrop-blur-sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewHotel(hotel)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver detalles
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditHotel(hotel)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Editar hotel
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleSelectHotel(hotel)}>
+                            <Building2 className="h-4 w-4 mr-2" />
+                            Seleccionar hotel
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <CardHeader className="pb-3">
+                      <div className="space-y-2">
+                        <CardTitle className="text-lg line-clamp-1 pr-10">
+                          {hotel.name}
+                        </CardTitle>
+                        {hotel.address && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            <span className="line-clamp-1">{hotel.address}</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">                      {/* Stats */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-50 rounded-lg">
+                            <Bed className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Habitaciones</p>
+                            <p className="text-xs text-muted-foreground">
+                              {hotelStats[hotel.id]?.rooms || 0} registradas
+                            </p>
+                          </div>
+                        </div><div className="flex items-center gap-2">
+                          <div className="p-2 bg-emerald-50 rounded-lg">
+                            <Users className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-sm font-medium">Ocupación</p>
+                              <p className="text-xs text-muted-foreground">
+                                {hotelStats[hotel.id]?.occupancy || 0}%
+                              </p>
+                            </div>                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                              <div 
+                                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300" 
+                                style={{ width: `${hotelStats[hotel.id]?.occupancy || 0}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Status */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm text-muted-foreground">Operativo</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            ID: {hotel.id}
+                          </Badge>
+                          {hotelStats[hotel.id]?.occupancy && hotelStats[hotel.id].occupancy > 80 && (
+                            <Badge variant="destructive" className="text-xs">
+                              Alta ocupación
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+
+                    <CardFooter className="pt-0">
+                      <div className="flex gap-2 w-full">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => handleViewHotel(hotel)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => handleSelectHotel(hotel)}
+                        >
+                          <Building2 className="h-4 w-4 mr-1" />
+                          Seleccionar
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+                <Building2 className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">
+                ¡Bienvenido a Smart Suite!
+              </h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                Parece que aún no tienes hoteles registrados. Comienza creando tu primer hotel para gestionar habitaciones, reservas y más.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  onClick={() => setIsHotelFormOpen(true)}
+                  size="lg"
+                  className="px-8"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Crear Mi Primer Hotel
+                </Button>
+                <Button variant="outline" size="lg" className="px-8">
+                  <Calendar className="h-5 w-5 mr-2" />
+                  Ver Tutorial
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {user && (
+        <HotelFormDialog
+          open={isHotelFormOpen}
+          onOpenChange={setIsHotelFormOpen}
+          onHotelCreated={handleHotelCreated}
+          ownerId={Number(user.id)}
+        />
+      )}
+    </div>
+  );
 }
 
 // Component for room sidebar

@@ -14,6 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { HotelProvider } from "@/contexts/HotelContext";
+import { HotelSelector } from "@/components/hotel-selector";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -51,10 +53,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const confirmLogout = () => {
     setShowLogoutDialog(false);
     handleLogout();
-  };
-  return (
+  };  return (
     <AuthGuard>
-      <div className="flex flex-col min-h-screen">
+      <HotelProvider>
+        <div className="flex flex-col min-h-screen">
         {/* Header */}
         <header className="sticky top-0 z-40 w-full bg-card text-card-foreground shadow-sm border-b border-border flex items-center h-16 px-4 md:px-8 flex-shrink-0">
           {/* Ícono hamburguesa a la izquierda */}
@@ -63,15 +65,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Button>
           <div className="flex items-center gap-4 flex-shrink-0">
             <Image src="/logos/logo-smart-suite-bg-translucent.png" alt="Logo" width={36} height={36} />
-          </div>
-          <nav className="hidden md:flex flex-1 items-center justify-center gap-1 overflow-x-auto">
+          </div>          <nav className="hidden md:flex flex-1 items-center justify-center gap-1 overflow-x-auto">
             {NAV_LINKS.map(link => (
               <Link key={link.href} href={link.href} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-muted rounded-md whitespace-nowrap transition-colors">
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-2 ml-2">
+          <div className="flex items-center gap-3 ml-2">
+            <HotelSelector />
             <ThemeSwitcher />
             <Button 
               onClick={() => setShowLogoutDialog(true)}
@@ -142,9 +144,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 Logout
               </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          </DialogContent>        </Dialog>
       </div>
+      </HotelProvider>
     </AuthGuard>
   );
 }

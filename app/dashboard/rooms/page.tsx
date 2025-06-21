@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useContext } from "react"
 import { useRouter } from "next/navigation"
-import { Home, Settings, Layers, Plus, Search, Edit, Trash2, Filter } from "lucide-react"
+import { Home, Settings, Layers, Plus, Search, Edit, Trash2, Filter, Building2 } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,7 +33,9 @@ import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-mobile"
 import { toast } from "sonner"
 import { getAllRooms, createRoom, updateRoomState, updateRoom, Room } from "@/lib/services/rooms-service"
-import { getTypeRoomsByHotel, TypeRoom } from "@/lib/services/typeroom-service"
+import { getTypeRoomsByHotel, createTypeRoom, TypeRoom } from "@/lib/services/typeroom-service"
+import { useHotel } from "@/contexts/HotelContext"
+import { AuthContext } from "@/contexts/AuthContext"
 
 type RoomStatus = "occupied" | "available" | "maintenance"
 
@@ -90,15 +92,22 @@ export default function RoomsAdminPage() {
   const [floorFilter, setFloorFilter] = useState<number | "all">("all")
   const [isLoading, setIsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isTypeRoomDialogOpen, setIsTypeRoomDialogOpen] = useState(false)
   const [currentRoom, setCurrentRoom] = useState<RoomData | null>(null)
   const [isNewRoom, setIsNewRoom] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const isMobile = useMediaQuery("(max-width: 768px)")
   const router = useRouter()
-
+  const { selectedHotel } = useHotel()
+  const { token } = useContext(AuthContext)
   const [newRoomData, setNewRoomData] = useState({
     typeRoomId: 0,
     state: "available" as RoomStatus,
+  })
+
+  const [newTypeRoomData, setNewTypeRoomData] = useState({
+    description: "",
+    price: 0,
   })
 
   // Formulario para nueva/editar habitación
@@ -145,46 +154,50 @@ export default function RoomsAdminPage() {
       notes: "",
     };
   };
-
   // Cargar habitaciones desde la API
   useEffect(() => {
     const fetchInitialData = async () => {
-      setIsLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
+      if (!selectedHotel) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);      try {
         if (!token) {
           toast.error("No hay sesión activa. Por favor, inicie sesión de nuevo.");
           router.push('/sign-in');
           return;
         }
-        
-        const hotelId = parseInt(localStorage.getItem('selected_hotel_id') || '1');
 
-        const roomsResult = await getAllRooms(token, hotelId);
+        const roomsResult = await getAllRooms(token, selectedHotel.id);
         if (roomsResult.success && roomsResult.data) {
           const roomsData = roomsResult.data.map(convertRoomToRoomData);
           setRooms(roomsData);
           setFilteredRooms(roomsData);
         } else {
           toast.error(roomsResult.message || "No se pudieron cargar las habitaciones");
+          setRooms([]);
+          setFilteredRooms([]);
         }
 
-        const typeRoomsResult = await getTypeRoomsByHotel(hotelId, token);
+        const typeRoomsResult = await getTypeRoomsByHotel(selectedHotel.id, token);
         if (typeRoomsResult.success && typeRoomsResult.data) {
           setTypeRooms(typeRoomsResult.data);
         } else {
-          toast.error(typeRoomsResult.message || "No se pudieron cargar los tipos de habitación.");
+          console.warn("No se pudieron cargar los tipos de habitación:", typeRoomsResult.message);
+          setTypeRooms([]);
         }
 
       } catch (error: any) {
         toast.error("Error al cargar los datos iniciales: " + error.message);
+        setRooms([]);
+        setFilteredRooms([]);
+        setTypeRooms([]);
       } finally {
         setIsLoading(false);
       }
-    };
-
-    fetchInitialData();
-  }, [router]);
+    };    fetchInitialData();
+  }, [selectedHotel, router, token]); // Recargar cuando cambie el hotel seleccionado o el token
 
   useEffect(() => {
     filterRooms()
@@ -212,14 +225,7 @@ export default function RoomsAdminPage() {
 
     setFilteredRooms(filtered)
   }
-
   const handleCreateRoom = () => {
-    if (typeRooms.length === 0) {
-      toast.error("No hay tipos de habitación definidos.", {
-        description: "Por favor, vaya a 'Gestión del Hotel' para añadir al menos un tipo de habitación.",
-      });
-      return;
-    }
     setIsNewRoom(true)
     setNewRoomData({
       typeRoomId: typeRooms[0]?.id || 0,
@@ -257,27 +263,31 @@ export default function RoomsAdminPage() {
       }
     }
   }
-
   const handleSaveRoom = async () => {
-    const token = localStorage.getItem('auth_token');
-    const hotelId = localStorage.getItem('selected_hotel_id');
+    const hotelId = selectedHotel?.id;
 
     if (!token || !hotelId) {
       toast.error("Error de configuración. No se encontró token o ID del hotel.");
       return;
     }
 
-    if (isNewRoom) {
-      // Lógica para CREAR una nueva habitación
-      if (!newRoomData.typeRoomId) {
+    if (isNewRoom) {      // Lógica para CREAR una nueva habitación
+      if (!newRoomData.typeRoomId && typeRooms.length > 0) {
         toast.error("Debe seleccionar un tipo de habitación.");
+        return;
+      }
+
+      if (typeRooms.length === 0) {
+        toast.error("No hay tipos de habitación definidos.", {
+          description: "Por favor, vaya a 'Gestión del Hotel' para añadir al menos un tipo de habitación antes de crear habitaciones."
+        });
         return;
       }
 
       try {
         const result = await createRoom({
           ...newRoomData,
-          hotelId: parseInt(hotelId),
+          hotelId: hotelId,
         }, token);
 
         if (result.success && result.data) {
@@ -352,10 +362,8 @@ export default function RoomsAdminPage() {
     const floors = [...new Set(rooms.map((room) => room.floor))].filter(floor => floor !== undefined).sort((a, b) => (a || 0) - (b || 0))
     return floors as number[]
   }
-
   const handleQuickStatusChange = async (roomId: number, newStatus: RoomStatus) => {
     try {
-      const token = localStorage.getItem('auth_token');
       if (!token) {
         toast.error("No hay token de autenticación");
         return;
@@ -377,6 +385,43 @@ export default function RoomsAdminPage() {
       toast.error("Error al cambiar el estado de la habitación");
     }
   }
+
+  const handleCreateTypeRoom = async () => {
+    if (!selectedHotel || !token) {
+      toast.error("Error de configuración. No se encontró hotel o token.");
+      return;
+    }
+
+    if (!newTypeRoomData.description.trim()) {
+      toast.error("La descripción del tipo de habitación es requerida.");
+      return;
+    }
+
+    if (newTypeRoomData.price <= 0) {
+      toast.error("El precio debe ser mayor a 0.");
+      return;
+    }
+
+    try {
+      const result = await createTypeRoom({
+        description: newTypeRoomData.description,
+        price: newTypeRoomData.price,
+        hotelId: selectedHotel.id,
+      }, token);      if (result.success && result.data) {
+        toast.success("Tipo de habitación creado con éxito.");
+        setTypeRooms(prev => [...prev, result.data!]);
+        setNewTypeRoomData({ description: "", price: 0 });
+        setIsTypeRoomDialogOpen(false);
+        
+        // Actualizar el formulario de habitación con el nuevo tipo
+        setNewRoomData(prev => ({ ...prev, typeRoomId: result.data!.id }));
+      } else {
+        toast.error(result.message || "No se pudo crear el tipo de habitación.");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Ocurrió un error al crear el tipo de habitación.");
+    }
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
@@ -472,7 +517,16 @@ export default function RoomsAdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading ? (
+                    {!selectedHotel ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <Building2 className="h-8 w-8 text-muted-foreground" />
+                            <span>Selecciona un hotel para ver las habitaciones</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : isLoading ? (
                       <TableRow>
                         <TableCell colSpan={8} className="h-24 text-center">
                           Cargando habitaciones...
@@ -594,16 +648,35 @@ export default function RoomsAdminPage() {
                 >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Seleccione un tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {typeRooms.map(tr => (
-                      <SelectItem key={tr.id} value={String(tr.id)}>
-                        {tr.description} (${tr.price.toFixed(2)})
+                  </SelectTrigger>                  <SelectContent>
+                    {typeRooms.length === 0 ? (
+                      <SelectItem value="0" disabled>
+                        No hay tipos disponibles - Cree uno primero
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    ) : (
+                      typeRooms.map(tr => (
+                        <SelectItem key={tr.id} value={String(tr.id)}>
+                          {tr.description} (${tr.price.toFixed(2)})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>                </Select>
               </div>
+              {typeRooms.length === 0 && (
+                <div className="col-span-4 text-sm text-amber-600 bg-amber-50 p-3 rounded-md border border-amber-200">
+                  <p className="font-medium">⚠️ No hay tipos de habitación definidos</p>
+                  <p className="mb-3">Para crear habitaciones, primero debe definir al menos un tipo de habitación en la gestión del hotel.</p>                  <Button 
+                    onClick={() => {
+                      setIsTypeRoomDialogOpen(true);
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                  >
+                    Crear Tipo de Habitación
+                  </Button>
+                </div>
+              )}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="state" className="text-right">
                   Estado
@@ -750,7 +823,58 @@ export default function RoomsAdminPage() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveRoom}>{isNewRoom ? "Crear habitación" : "Guardar cambios"}</Button>
+            <Button 
+              onClick={handleSaveRoom} 
+              disabled={isNewRoom && typeRooms.length === 0}
+            >
+              {isNewRoom ? "Crear habitación" : "Guardar cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para crear tipo de habitación */}
+      <Dialog open={isTypeRoomDialogOpen} onOpenChange={setIsTypeRoomDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Nuevo Tipo de Habitación</DialogTitle>
+            <DialogDescription>
+              Defina los detalles para el nuevo tipo de habitación.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="description">Descripción</Label>
+                <Input
+                  id="description"
+                  value={newTypeRoomData.description}
+                  onChange={(e) => setNewTypeRoomData({ ...newTypeRoomData, description: e.target.value })}
+                  placeholder="Ej: Habitación Doble, Suite Presidencial"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price">Precio por noche ($)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  min="0"
+                  value={newTypeRoomData.price}
+                  onChange={(e) => setNewTypeRoomData({ ...newTypeRoomData, price: Number.parseInt(e.target.value) })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTypeRoomDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateTypeRoom}>
+              Crear Tipo de Habitación
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
