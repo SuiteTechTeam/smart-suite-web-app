@@ -43,11 +43,14 @@ export async function signUp(user: { name: string; surname: string; phone: strin
   else if (user.roleId === 2) endpoint = API_CONFIG.ENDPOINTS.AUTH.SIGN_UP_ADMIN;
   else if (user.roleId === 3) endpoint = API_CONFIG.ENDPOINTS.AUTH.SIGN_UP_GUEST;
   else return { success: false, message: "Rol inválido" };
+  //raro, pero funciona, separa el rol del usuario para que no se envíe en el body
+  const { roleId, ...userToSend } = user;
+
   try {
     const response = await fetch(buildApiUrl(endpoint), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(user)
+      body: JSON.stringify(userToSend),
     });
     if (!response.ok) {
       const errorText = await response.text();

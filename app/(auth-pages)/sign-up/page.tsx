@@ -19,6 +19,7 @@ export default function SmartSuiteSignup() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: "",
+    surname: "",
     email: "",
     phone: "",
     password: "",
@@ -70,7 +71,7 @@ export default function SmartSuiteSignup() {
 
   const handleNext = (e: React.FormEvent<HTMLDivElement> | React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.password || !form.confirmPassword) {
+    if (!form.name || !form.surname || !form.email || !form.password || !form.confirmPassword) {
       setMessage({ type: "error", text: "Por favor complete todos los campos requeridos" });
       return;
     }
@@ -99,7 +100,7 @@ export default function SmartSuiteSignup() {
     try {
       const result = await signUp({
         name: form.name,
-        surname: '',
+        surname: form.surname,
         phone: form.phone,
         email: form.email,
         password: form.password,
@@ -209,28 +210,41 @@ export default function SmartSuiteSignup() {
                 {/* Name & Email Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label className="text-sm font-semibold text-card-foreground mb-2 block">Nombre completo</Label>
+                    <Label className="text-sm font-semibold text-card-foreground mb-2 block">Nombre</Label>
                     <Input
                       name="name"
                       value={form.name}
                       onChange={handleChange}
-                      placeholder="Arian Rodriguez"
+                      placeholder="name"
                       className="h-12 border border-border rounded-lg focus:border-primary focus:ring-0 text-base bg-background text-foreground"
                       required
                     />
                   </div>
                   <div>
-                    <Label className="text-sm font-semibold text-card-foreground mb-2 block">Correo electrónico</Label>
+                    <Label className="text-sm font-semibold text-card-foreground mb-2 block">Apellido</Label>
                     <Input
-                      name="email"
-                      type="email"
-                      value={form.email}
+                      name="surname"
+                      value={form.surname}
                       onChange={handleChange}
-                      placeholder="mono@mauwiwi.com"
+                      placeholder="apellido"
                       className="h-12 border border-border rounded-lg focus:border-primary focus:ring-0 text-base bg-background text-foreground"
                       required
                     />
                   </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <Label className="text-sm font-semibold text-card-foreground mb-2 block">Correo electrónico</Label>
+                  <Input
+                    name="email"
+                    type="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="correo@test.com"
+                    className="h-12 border border-border rounded-lg focus:border-primary focus:ring-0 text-base bg-background text-foreground"
+                    required
+                  />
                 </div>
 
                 {/* Phone */}
@@ -242,6 +256,7 @@ export default function SmartSuiteSignup() {
                     onChange={handleChange}
                     placeholder="999 888 547"
                     className="h-12 border border-border rounded-lg focus:border-primary focus:ring-0 text-base bg-background text-foreground pl-4"
+                    required
                   />
                 </div>
 
