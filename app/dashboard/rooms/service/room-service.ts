@@ -6,7 +6,8 @@ import {
   createRoom as apiCreateRoom, 
   updateRoomState, 
   getRoomById, 
-  Room as ApiRoom 
+  Room as ApiRoom,
+  CreateRoomData
 } from "@/lib/services/rooms-service";
 import { ServerActionResult } from "@/types/interfaces";
 
@@ -37,15 +38,11 @@ const convertApiRoomToRoom = (apiRoom: ApiRoom): Room => ({
   notes: "",
 });
 
-// Función para convertir de Room a ApiRoom
-const convertRoomToApiRoom = (room: Omit<Room, 'id'>): Omit<ApiRoom, 'id'> => ({
-  room_number: room.name,
-  type: room.type,
-  capacity: room.capacity,
-  price: room.price,
+// Función para convertir de Room a CreateRoomData (para crear habitaciones)
+const convertRoomToCreateRoomData = (room: Omit<Room, 'id'>, typeRoomId: number, hotelId: number): CreateRoomData => ({
+  typeRoomId,
+  hotelId,
   state: room.status,
-  floor: room.floor,
-  devices: room.devices,
 });
 
 export const getRooms = async (hotelId: number = 1): Promise<ServerActionResult> => {
@@ -81,7 +78,7 @@ export const getRooms = async (hotelId: number = 1): Promise<ServerActionResult>
   }
 };
 
-export const createRoom = async (room: Omit<Room, 'id'>): Promise<ServerActionResult> => {
+export const createRoom = async (room: Omit<Room, 'id'>, typeRoomId: number, hotelId: number): Promise<ServerActionResult> => {
   try {
     const token = localStorage.getItem('auth_token');
     if (!token) {
@@ -91,8 +88,8 @@ export const createRoom = async (room: Omit<Room, 'id'>): Promise<ServerActionRe
       };
     }
 
-    const apiRoom = convertRoomToApiRoom(room);
-    const result = await apiCreateRoom(apiRoom, token);
+    const createRoomData = convertRoomToCreateRoomData(room, typeRoomId, hotelId);
+    const result = await apiCreateRoom(createRoomData, token);
     
     if (result.success && result.data) {
       const newRoom = convertApiRoomToRoom(result.data);
