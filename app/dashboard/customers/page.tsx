@@ -38,6 +38,7 @@ export default function CustomersPage() {
 
 		setLoading(true);
 		const result = await getAllPayments(token);
+		console.log(result);
 		if (result.success) {
 			setPayments(result.data ?? []);
 		} else {
