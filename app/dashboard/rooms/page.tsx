@@ -287,10 +287,14 @@ export default function RoomsAdminPage() {
       }
 
       try {
-        const result = await createRoom({
-          ...newRoomData,
+        // Usar la estructura CreateRoomData que espera la API
+        const createRoomData = {
+          typeRoomId: newRoomData.typeRoomId,
           hotelId: hotelId,
-        }, token);
+          state: newRoomData.state,
+        };
+
+        const result = await createRoom(createRoomData, token);
 
         if (result.success && result.data) {
           toast.success("Habitación creada con éxito.");

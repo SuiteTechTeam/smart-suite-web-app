@@ -1,3 +1,8 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { routesConfig } from "@/lib/config/routes";
+import { ThemeSwitcher } from "@/components/theme-switcher";
+
 export default function AuthButton() {
 	return (
 		<div className="flex gap-6 items-center">
