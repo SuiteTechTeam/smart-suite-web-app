@@ -153,6 +153,7 @@ export default function AnalyticsPage() {
     
     // Agrupar notificaciones por habitación
     notifications.forEach(notification => {
+      if (notification.room_id === undefined || notification.room_id === null) return;
       const roomKey = notification.room_id.toString();
       if (!roomNotifications[roomKey]) {
         roomNotifications[roomKey] = [];
