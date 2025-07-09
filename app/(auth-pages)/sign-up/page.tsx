@@ -172,27 +172,27 @@ export default function SmartSuiteSignup() {
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center bg-background text-foreground px-2 py-8">
-      <div className="w-full max-w-2xl mx-auto">
-        {/* Progress Indicator */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center gap-4">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300
-              ${step >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground border border-border'}`}
-            >
-              1
-            </div>
-            <div className={`h-1 w-16 rounded-full transition-all duration-300
-              ${step >= 2 ? 'bg-primary' : 'bg-muted'}`}></div>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300
-              ${step >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground border border-border'}`}
-            >
-              2
+    <div className="w-full min-h-screen flex justify-center bg-background text-foreground px-2 py-8 overflow-auto">
+      <div className="w-full flex justify-center">
+        <Card className="w-full max-w-md sm:max-w-lg mx-auto bg-card shadow-lg border border-border rounded-3xl overflow-visible my-8">
+          {/* Progress Indicator dentro del Card */}
+          <div className="flex items-center justify-center mb-8 mt-2">
+            <div className="flex items-center gap-4">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300
+                ${step >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground border border-border'}`}
+              >
+                1
+              </div>
+              <div className={`h-1 w-16 rounded-full transition-all duration-300
+                ${step >= 2 ? 'bg-primary' : 'bg-muted'}`}></div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300
+                ${step >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground border border-border'}`}
+              >
+                2
+              </div>
             </div>
           </div>
-        </div>
 
-        <Card className="bg-card shadow-lg border border-border rounded-3xl overflow-hidden">
           {step === 1 ? (
             <div className="p-8 sm:p-10">
               {/* Header */}
