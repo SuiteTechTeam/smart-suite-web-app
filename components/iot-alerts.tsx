@@ -111,7 +111,7 @@ export function IoTAlerts({ temperature, humidity, motion, smoke, timestamp }: I
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 w-full">
       {alerts.map((alert) => (
         <Alert
           key={alert.id}
@@ -121,8 +121,8 @@ export function IoTAlerts({ temperature, humidity, motion, smoke, timestamp }: I
               : "border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950"
           }
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between w-full flex-row">
+            <div className="flex items-center space-x-2 w-auto">
               {alert.type === "temperature" && <Thermometer className="h-4 w-4" />}
               {alert.type === "humidity" && <Droplets className="h-4 w-4" />}
               {alert.type === "motion" && <Eye className="h-4 w-4" />}
@@ -136,6 +136,19 @@ export function IoTAlerts({ temperature, humidity, motion, smoke, timestamp }: I
               >
                 {alert.message}
               </AlertTitle>
+              <AlertDescription
+                className={
+                alert.severity === "critical"
+                    ? "text-red-700 dark:text-red-300"
+                    : "text-yellow-700 dark:text-yellow-300"
+                }
+            >
+                Valor actual: {alert.value}
+                {alert.type === "temperature" && "°C"}
+                {alert.type === "humidity" && "%"}
+                {alert.type === "smoke" && " ppm"}
+                {alert.type === "motion" && " (sin movimiento)"}
+            </AlertDescription>
             </div>
             <Badge
               variant={alert.severity === "critical" ? "destructive" : "secondary"}
@@ -144,19 +157,6 @@ export function IoTAlerts({ temperature, humidity, motion, smoke, timestamp }: I
               {alert.severity === "critical" ? "Crítico" : "Advertencia"}
             </Badge>
           </div>
-          <AlertDescription
-            className={
-              alert.severity === "critical"
-                ? "text-red-700 dark:text-red-300"
-                : "text-yellow-700 dark:text-yellow-300"
-            }
-          >
-            Valor actual: {alert.value}
-            {alert.type === "temperature" && "°C"}
-            {alert.type === "humidity" && "%"}
-            {alert.type === "smoke" && " ppm"}
-            {alert.type === "motion" && " (sin movimiento)"}
-          </AlertDescription>
         </Alert>
       ))}
     </div>
