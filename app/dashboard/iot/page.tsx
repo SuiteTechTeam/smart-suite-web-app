@@ -158,6 +158,8 @@ export default function IoTDashboard() {
     servo2: 0,
     motion: false,
   })
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -203,6 +205,30 @@ export default function IoTDashboard() {
     }
   }, [selectedRoom]);
 
+  // Consulta automática cada 5 segundos
+  useEffect(() => {
+    if (!selectedRoom) return;
+
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+
+    // Función para actualizar datos
+    const updateData = () => {
+      loadSensorData(selectedRoom.id, token);
+    };
+
+    // Actualizar inmediatamente
+    updateData();
+
+    // Configurar intervalo de 5 segundos
+    const interval = setInterval(updateData, 5000);
+
+    // Limpiar intervalo cuando el componente se desmonte o cambie la habitación
+    return () => {
+      clearInterval(interval);
+    };
+  }, [selectedRoom]);
+
   const loadRoomData = async (roomId: number) => {
     try {
       const token = localStorage.getItem('auth_token');
@@ -230,10 +256,12 @@ export default function IoTDashboard() {
 
   const loadSensorData = async (roomId: number, token: string) => {
     try {
+      setIsUpdating(true);
       const result = await fetchNotificationHistoryByRoom(roomId, token);
       
       if (result.success && result.data) {
         const iotData = result.data;
+        setLastUpdate(new Date());
         if (selectedRoom) {
           setSelectedRoom(prev => prev ? { ...prev, iotData } : null);
         }
@@ -256,6 +284,8 @@ export default function IoTDashboard() {
       }
     } catch (error) {
       console.error('Error loading sensor data:', error);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -375,10 +405,18 @@ export default function IoTDashboard() {
                 </p>
               </div>
             </div>
-            <Button onClick={refreshData} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Actualizar
-            </Button>
+            <div className="flex items-center space-x-2">
+              {isUpdating && (
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Actualizando...</span>
+                </div>
+              )}
+              <Button onClick={refreshData} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Actualizar
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -395,6 +433,19 @@ export default function IoTDashboard() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
+                {/* Indicador de última actualización */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span>Actualización automática cada 5 segundos</span>
+                  </div>
+                  {lastUpdate && (
+                    <div className="text-sm text-muted-foreground">
+                      Última actualización: {lastUpdate.toLocaleTimeString()}
+                    </div>
+                  )}
+                </div>
+
                 {/* Status Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <StatusCard
