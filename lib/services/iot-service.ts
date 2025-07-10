@@ -260,3 +260,93 @@ export async function createNotification(notification: Omit<NotificationHistory,
     return { success: false, message: error.message };
   }
 }
+
+// Nuevas interfaces para el parsing mejorado de métricas
+export interface SensorData {
+  temp?: number;
+  hum?: number;
+  motion?: boolean;
+  smoke?: number;
+  servo1?: number;
+  servo2?: number;
+  stamp?: number;
+}
+
+export interface DeviceStatus {
+  device_status?: string;
+  battery?: string;
+  signal?: string;
+  last_seen?: string;
+}
+
+export interface IoTMetricData {
+  id: number;
+  registrationDate: string;
+  roomDeviceId: number;
+  type: 'sensor' | 'device_status';
+  data: SensorData | DeviceStatus;
+}
+
+// Función para parsear ambos tipos de métricas
+function parseMetric(metric: string): { type: 'sensor' | 'device_status'; data: SensorData | DeviceStatus } {
+  if (metric.startsWith('device_status')) {
+    const parts = metric.split(';');
+    const data: DeviceStatus = {};
+    parts.forEach(part => {
+      const [key, value] = part.split(':');
+      if (key && value !== undefined) {
+        data[key as keyof DeviceStatus] = value;
+      }
+    });
+    return { type: 'device_status', data };
+  } else {
+    const parts = metric.split(';');
+    const data: SensorData = {};
+    parts.forEach(part => {
+      const [key, value] = part.split(':');
+      if (key && value !== undefined) {
+        // Conversión de tipos para datos de sensores
+        if (key === 'temp' || key === 'hum' || key === 'smoke' || key === 'servo1' || key === 'servo2' || key === 'stamp') {
+          (data as any)[key] = parseFloat(value);
+        } else if (key === 'motion') {
+          (data as any)[key] = value === 'true';
+        }
+      }
+    });
+    return { type: 'sensor', data };
+  }
+}
+
+// Nueva función para obtener historial de notificaciones con parsing mejorado
+export async function fetchNotificationHistoryByRoom(roomId: number, token: string): Promise<ApiResult<IoTMetricData[]>> {
+  try {
+    const response = await fetch(`https://smart-suite-web-service.azurewebsites.net/api/v1/io-t/notification-history/by-room/${roomId}`, {
+      method: "GET",
+      headers: { 
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, message: errorText };
+    }
+    
+    const rawData = await response.json();
+    const parsedData: IoTMetricData[] = rawData.map((item: any) => {
+      const { type, data } = parseMetric(item.metric);
+      return {
+        id: item.id,
+        registrationDate: item.registrationDate,
+        roomDeviceId: item.roomDeviceId,
+        type,
+        data
+      };
+    });
+    
+    return { success: true, data: parsedData };
+  } catch (error: any) {
+    return handleApiError(error, 'Error al cargar el historial de notificaciones');
+  }
+}

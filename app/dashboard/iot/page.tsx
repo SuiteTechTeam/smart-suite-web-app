@@ -34,11 +34,11 @@ import {
   RefreshCw
 } from "lucide-react"
 import { getAllRooms, Room } from "@/lib/services/rooms-service"
-import { getAllIoTDevices, getRoomDevicesByRoom, getNotificationsByRoom, IoTDevice, RoomDevice, NotificationHistory } from "@/lib/services/iot-service"
+import { getAllIoTDevices, getRoomDevicesByRoom, getNotificationsByRoom, IoTDevice, RoomDevice, NotificationHistory, fetchNotificationHistoryByRoom, IoTMetricData, SensorData, DeviceStatus } from "@/lib/services/iot-service"
 import { IoTAlerts } from "@/components/iot-alerts"
 import { IoTStats } from "@/components/iot-stats"
 
-interface SensorData {
+interface LegacySensorData {
   id: number;
   registrationDate: string;
   roomDeviceId: number;
@@ -61,7 +61,7 @@ interface RoomStatus {
   floor: number;
   status: "occupied" | "available" | "maintenance";
   devices: string[];
-  sensorData?: SensorData[];
+  iotData?: IoTMetricData[];
 }
 
 const parseMetric = (metricString: string): ParsedMetric => {
@@ -230,30 +230,29 @@ export default function IoTDashboard() {
 
   const loadSensorData = async (roomId: number, token: string) => {
     try {
-      const response = await fetch(`https://smart-suite-web-service.azurewebsites.net/api/v1/io-t/notification-history/by-room/${roomId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const result = await fetchNotificationHistoryByRoom(roomId, token);
       
-      if (response.ok) {
-        const sensorData: SensorData[] = await response.json();
+      if (result.success && result.data) {
+        const iotData = result.data;
         if (selectedRoom) {
-          setSelectedRoom(prev => prev ? { ...prev, sensorData } : null);
+          setSelectedRoom(prev => prev ? { ...prev, iotData } : null);
         }
         
-                 // Actualizar estados de dispositivos basado en datos reales
-         if (sensorData.length > 0) {
-           const latestData = parseMetric(sensorData[sensorData.length - 1].metric);
-           setDeviceStates(prev => ({
-             ...prev,
-             servo1: latestData.servo1,
-             servo2: latestData.servo2,
-             termostato: latestData.temp,
-             motion: latestData.motion
-           }));
-         }
+        // Actualizar estados de dispositivos basado en datos reales
+        const latestSensorData = iotData
+          .filter(item => item.type === 'sensor')
+          .pop();
+          
+        if (latestSensorData && latestSensorData.type === 'sensor') {
+          const sensorData = latestSensorData.data as SensorData;
+          setDeviceStates(prev => ({
+            ...prev,
+            servo1: sensorData.servo1 || 0,
+            servo2: sensorData.servo2 || 0,
+            termostato: sensorData.temp || 22,
+            motion: sensorData.motion || false
+          }));
+        }
       }
     } catch (error) {
       console.error('Error loading sensor data:', error);
@@ -391,6 +390,7 @@ export default function IoTDashboard() {
                 <TabsTrigger value="overview">Vista General</TabsTrigger>
                 <TabsTrigger value="sensors">Sensores</TabsTrigger>
                 <TabsTrigger value="devices">Dispositivos</TabsTrigger>
+                <TabsTrigger value="device-status">Estado del Dispositivo</TabsTrigger>
                 <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
               </TabsList>
 
@@ -428,7 +428,7 @@ export default function IoTDashboard() {
                 </div>
 
                                  {/* Estadísticas de Sensores */}
-                 {selectedRoom.sensorData && selectedRoom.sensorData.length > 0 && (
+                 {selectedRoom.iotData && selectedRoom.iotData.length > 0 && (
                    <Card>
                      <CardHeader>
                        <CardTitle>Estadísticas en Tiempo Real</CardTitle>
@@ -437,7 +437,57 @@ export default function IoTDashboard() {
                        </CardDescription>
                      </CardHeader>
                      <CardContent>
-                       <IoTStats sensorData={selectedRoom.sensorData} />
+                       <div className="space-y-4">
+                         {/* Datos de Sensores */}
+                         <div>
+                           <h4 className="font-medium mb-2">Datos de Sensores</h4>
+                           {selectedRoom.iotData.filter(item => item.type === 'sensor').slice(-5).map((item) => {
+                             const sensorData = item.data as SensorData;
+                             return (
+                               <div key={item.id} className="p-3 border rounded-lg mb-2">
+                                 <div className="flex justify-between items-center mb-2">
+                                   <span className="text-sm font-medium">
+                                     {new Date(item.registrationDate).toLocaleString()}
+                                   </span>
+                                   <Badge variant="outline">#{item.id}</Badge>
+                                 </div>
+                                 <div className="grid grid-cols-2 gap-2 text-sm">
+                                   <div>🌡️ Temperatura: {sensorData.temp?.toFixed(1)}°C</div>
+                                   <div>💧 Humedad: {sensorData.hum}%</div>
+                                   <div>👁️ Movimiento: {sensorData.motion ? 'Sí' : 'No'}</div>
+                                   <div>🔥 Humo: {sensorData.smoke?.toFixed(1)}</div>
+                                   <div>⚙️ Servo 1: {sensorData.servo1}°</div>
+                                   <div>⚙️ Servo 2: {sensorData.servo2}°</div>
+                                 </div>
+                               </div>
+                             );
+                           })}
+                         </div>
+                         
+                         {/* Estado del Dispositivo */}
+                         <div>
+                           <h4 className="font-medium mb-2">Estado del Dispositivo</h4>
+                           {selectedRoom.iotData.filter(item => item.type === 'device_status').slice(-3).map((item) => {
+                             const deviceStatus = item.data as DeviceStatus;
+                             return (
+                               <div key={item.id} className="p-3 border rounded-lg mb-2">
+                                 <div className="flex justify-between items-center mb-2">
+                                   <span className="text-sm font-medium">
+                                     {new Date(item.registrationDate).toLocaleString()}
+                                   </span>
+                                   <Badge variant="outline">#{item.id}</Badge>
+                                 </div>
+                                 <div className="grid grid-cols-2 gap-2 text-sm">
+                                   <div>📡 Estado: {deviceStatus.device_status}</div>
+                                   <div>🔋 Batería: {deviceStatus.battery}</div>
+                                   <div>📶 Señal: {deviceStatus.signal}</div>
+                                   <div>🕐 Última conexión: {deviceStatus.last_seen ? new Date(deviceStatus.last_seen).toLocaleString() : 'N/A'}</div>
+                                 </div>
+                               </div>
+                             );
+                           })}
+                         </div>
+                       </div>
                      </CardContent>
                    </Card>
                  )}
@@ -450,11 +500,11 @@ export default function IoTDashboard() {
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={selectedRoom.sensorData?.slice(-24).map(data => {
-                          const parsed = parseMetric(data.metric);
+                        <LineChart data={selectedRoom.iotData?.filter(item => item.type === 'sensor').slice(-24).map(item => {
+                          const sensorData = item.data as SensorData;
                           return {
-                            time: new Date(data.registrationDate).toLocaleTimeString(),
-                            temperatura: parsed.temp
+                            time: new Date(item.registrationDate).toLocaleTimeString(),
+                            temperatura: sensorData.temp || 0
                           };
                         }) || []}>
                           <CartesianGrid strokeDasharray="3 3" />
@@ -473,11 +523,11 @@ export default function IoTDashboard() {
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={selectedRoom.sensorData?.slice(-24).map(data => {
-                          const parsed = parseMetric(data.metric);
+                        <LineChart data={selectedRoom.iotData?.filter(item => item.type === 'sensor').slice(-24).map(item => {
+                          const sensorData = item.data as SensorData;
                           return {
-                            time: new Date(data.registrationDate).toLocaleTimeString(),
-                            humedad: parsed.hum
+                            time: new Date(item.registrationDate).toLocaleTimeString(),
+                            humedad: sensorData.hum || 0
                           };
                         }) || []}>
                           <CartesianGrid strokeDasharray="3 3" />
@@ -494,7 +544,7 @@ export default function IoTDashboard() {
 
                              <TabsContent value="sensors" className="space-y-4">
                  {/* Alertas de Sensores */}
-                 {selectedRoom.sensorData && selectedRoom.sensorData.length > 0 && (
+                 {selectedRoom.iotData && selectedRoom.iotData.length > 0 && (
                    <Card>
                      <CardHeader>
                        <CardTitle>Alertas de Sensores</CardTitle>
@@ -503,13 +553,19 @@ export default function IoTDashboard() {
                        </CardDescription>
                      </CardHeader>
                      <CardContent>
-                       <IoTAlerts
-                         temperature={deviceStates.termostato}
-                         humidity={selectedRoom.sensorData[selectedRoom.sensorData.length - 1] ? parseMetric(selectedRoom.sensorData[selectedRoom.sensorData.length - 1].metric).hum : 0}
-                         motion={deviceStates.motion}
-                         smoke={selectedRoom.sensorData[selectedRoom.sensorData.length - 1] ? parseMetric(selectedRoom.sensorData[selectedRoom.sensorData.length - 1].metric).smoke : 0}
-                         timestamp={selectedRoom.sensorData[selectedRoom.sensorData.length - 1]?.registrationDate || new Date().toISOString()}
-                       />
+                       {(() => {
+                         const latestSensorData = selectedRoom.iotData.filter(item => item.type === 'sensor').pop();
+                         const sensorData = latestSensorData?.data as SensorData;
+                         return (
+                           <IoTAlerts
+                             temperature={deviceStates.termostato}
+                             humidity={sensorData?.hum || 0}
+                             motion={deviceStates.motion}
+                             smoke={sensorData?.smoke || 0}
+                             timestamp={latestSensorData?.registrationDate || new Date().toISOString()}
+                           />
+                         );
+                       })()}
                      </CardContent>
                    </Card>
                  )}
@@ -520,25 +576,25 @@ export default function IoTDashboard() {
                       <CardTitle>Datos de Sensores en Tiempo Real</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {selectedRoom.sensorData && selectedRoom.sensorData.length > 0 ? (
+                      {selectedRoom.iotData && selectedRoom.iotData.length > 0 ? (
                         <div className="space-y-4">
-                          {selectedRoom.sensorData.slice(-5).reverse().map((data, index) => {
-                            const parsed = parseMetric(data.metric);
+                          {selectedRoom.iotData.filter(item => item.type === 'sensor').slice(-5).reverse().map((item, index) => {
+                            const sensorData = item.data as SensorData;
                             return (
-                              <div key={data.id} className="p-4 border rounded-lg">
+                              <div key={item.id} className="p-4 border rounded-lg">
                                 <div className="flex justify-between items-center mb-2">
                                   <span className="text-sm font-medium">
-                                    {new Date(data.registrationDate).toLocaleString()}
+                                    {new Date(item.registrationDate).toLocaleString()}
                                   </span>
-                                  <Badge variant="outline">#{data.id}</Badge>
+                                  <Badge variant="outline">#{item.id}</Badge>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
-                                  <div>🌡️ Temperatura: {parsed.temp.toFixed(1)}°C</div>
-                                  <div>💧 Humedad: {parsed.hum}%</div>
-                                  <div>👁️ Movimiento: {parsed.motion ? 'Sí' : 'No'}</div>
-                                  <div>🔥 Humo: {parsed.smoke.toFixed(1)}</div>
-                                  <div>⚙️ Servo 1: {parsed.servo1}°</div>
-                                  <div>⚙️ Servo 2: {parsed.servo2}°</div>
+                                  <div>🌡️ Temperatura: {sensorData.temp?.toFixed(1)}°C</div>
+                                  <div>💧 Humedad: {sensorData.hum}%</div>
+                                  <div>👁️ Movimiento: {sensorData.motion ? 'Sí' : 'No'}</div>
+                                  <div>🔥 Humo: {sensorData.smoke?.toFixed(1)}</div>
+                                  <div>⚙️ Servo 1: {sensorData.servo1}°</div>
+                                  <div>⚙️ Servo 2: {sensorData.servo2}°</div>
                                 </div>
                               </div>
                             );
@@ -654,6 +710,58 @@ export default function IoTDashboard() {
                     </div>
                   </DeviceCard>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="device-status" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Estado del Dispositivo</CardTitle>
+                    <CardDescription>
+                      Información de conectividad y estado del dispositivo IoT
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {selectedRoom.iotData && selectedRoom.iotData.length > 0 ? (
+                      <div className="space-y-4">
+                        {selectedRoom.iotData.filter(item => item.type === 'device_status').slice(-10).reverse().map((item) => {
+                          const deviceStatus = item.data as DeviceStatus;
+                          return (
+                            <div key={item.id} className="p-4 border rounded-lg">
+                              <div className="flex justify-between items-center mb-3">
+                                <span className="text-sm font-medium">
+                                  {new Date(item.registrationDate).toLocaleString()}
+                                </span>
+                                <Badge variant="outline">#{item.id}</Badge>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="flex items-center space-x-2">
+                                  <div className={`w-3 h-3 rounded-full ${deviceStatus.device_status === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                  <span className="text-sm">Estado: <strong>{deviceStatus.device_status}</strong></span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                  <span className="text-sm">Batería: <strong>{deviceStatus.battery}</strong></span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                                  <span className="text-sm">Señal: <strong>{deviceStatus.signal}</strong></span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                                  <span className="text-sm">Última conexión: <strong>{deviceStatus.last_seen ? new Date(deviceStatus.last_seen).toLocaleString() : 'N/A'}</strong></span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted-foreground py-8">
+                        No hay datos de estado del dispositivo disponibles
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="notifications" className="space-y-4">
